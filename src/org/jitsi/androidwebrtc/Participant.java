@@ -128,6 +128,14 @@ public class Participant implements PacketListener
                 rtcClient.acceptSessionInit(bridgeOfferSdp);
 
                 break;
+            case SOURCEADD:
+            case ADDSOURCE:
+                Log.i(TAG, "SOURCE ADD: " + jiq.toXML());
+                break;
+            case REMOVESOURCE:
+            case SOURCEREMOVE:
+                Log.i(TAG, "REMOVE SOURCE: " + jiq.toXML());
+                break;
             default:
                 System.err.println(" : Unknown Jingle IQ received : "
                                     + jiq.toString());
@@ -170,6 +178,7 @@ public class Participant implements PacketListener
         JingleIQ sessionAccept = JingleUtils.toJingle(sdp);
         sessionAccept.setTo(offererJid);
         sessionAccept.setSID(sid);
+        sessionAccept.setType(IQ.Type.SET);
         Log.i(TAG, sessionAccept.toXML());
         connection.sendPacket(sessionAccept);
     }

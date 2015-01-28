@@ -154,7 +154,7 @@ public class AppRTCDemoActivity extends Activity
 
   private void showGetRoomUI() {
     final EditText roomInput = new EditText(this);
-    roomInput.setText("https://test.hipchat.me/test");
+    roomInput.setText("https://boris.jitsi.net/test");
     roomInput.setSelection(roomInput.getText().length());
     DialogInterface.OnClickListener listener =
         new DialogInterface.OnClickListener() {
@@ -480,14 +480,18 @@ public class AppRTCDemoActivity extends Activity
 
     @Override public void onSignalingChange(
         PeerConnection.SignalingState newState) {
+
+      Log.i(TAG, "SIGNALING STATE: " + newState);
     }
 
     @Override public void onIceConnectionChange(
         PeerConnection.IceConnectionState newState) {
+      Log.i(TAG, "ICE CONN CHANGE: " + newState);
     }
 
     @Override public void onIceGatheringChange(
         PeerConnection.IceGatheringState newState) {
+      Log.i(TAG, "ICE Gather CHANGE: " + newState);
     }
 
     @Override public void onAddStream(final MediaStream stream){

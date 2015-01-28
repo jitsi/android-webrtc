@@ -1,7 +1,9 @@
 package org.jitsi.androidwebrtc;
 
+import android.util.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
+import org.jivesoftware.smack.packet.*;
 import org.webrtc.*;
 
 import java.net.*;
@@ -363,6 +365,7 @@ a=ssrc:2928659107 mslabel:mixedmslabel
         JingleIQ iq = new JingleIQ();
         iq.setAction(JingleAction.TRANSPORT_INFO);
         iq.setTo(jid);
+        iq.setType(IQ.Type.SET);
 
         ContentPacketExtension content
                 = new ContentPacketExtension(
@@ -408,13 +411,13 @@ a=ssrc:2928659107 mslabel:mixedmslabel
 private static List<String> getMediaSsrcLines(String mediaType, SessionDescription sdp)
 {
     String[] lines = sdp.description.split("\n");
+    Log.i("some", "SDP LINES: " + lines.length);
     LinkedList<String> ret = new LinkedList<String>();
 
     boolean in = false;
     for (String s : lines)
     {
         if (s.startsWith("m="+mediaType))
-        if ( ("m="+mediaType).equals(s))
         {
             in = true;
             continue;

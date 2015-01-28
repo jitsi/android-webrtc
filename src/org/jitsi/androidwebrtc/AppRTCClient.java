@@ -63,7 +63,7 @@ public class AppRTCClient {
   // These members are only read/written under sendQueue's lock.
   private LinkedList<String> sendQueue = new LinkedList<String>();
   private AppRTCSignalingParameters appRTCSignalingParameters;
-  private Participant participant;
+   Participant participant;
 
   public void acceptSessionInit(SessionDescription bridgeOfferSdp)
   {

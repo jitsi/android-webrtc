@@ -466,16 +466,7 @@ public class AppRTCDemoActivity extends Activity
     @Override public void onIceCandidate(final IceCandidate candidate){
       Log.i(TAG, "ICE CANDIDATE!!! " + candidate);
       //FIXME here are ICE candidates to be sent as transport-info
-      /*runOnUiThread(new Runnable() {
-          public void run() {
-            JSONObject json = new JSONObject();
-            jsonPut(json, "type", "candidate");
-            jsonPut(json, "label", candidate.sdpMLineIndex);
-            jsonPut(json, "id", candidate.sdpMid);
-            jsonPut(json, "candidate", candidate.sdp);
-            sendMessage(json);
-          }
-        });*/
+      AppRTCDemoActivity.this.appRtcClient.participant.sendTransportInfo(candidate);
     }
 
     @Override public void onError(){

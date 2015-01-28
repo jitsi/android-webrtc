@@ -23,6 +23,7 @@ public class Participant implements PacketListener
     MultiUserChat muc;
     private SessionDescription bridgeOfferSdp;
     private AppRTCClient rtcClient;
+    private String offererJid = null;
 
     public void join(AppRTCClient rtcClient, String xmppHostname, String xmppDomain, String mucJid, String nickname)
     {
@@ -119,6 +120,7 @@ public class Participant implements PacketListener
                 System.err.println(" : Jingle session-initiate " +
                                            "received");
                 this.bridgeOfferSdp = JingleUtils.toSdp(jiq, "offer");
+                offererJid = jiq.getFrom();
                 Log.d(TAG, bridgeOfferSdp.description);
 
                 rtcClient.acceptSessionInit(bridgeOfferSdp);
@@ -219,4 +221,12 @@ public class Participant implements PacketListener
 
         }
     }
+
+    public void sendTransportInfo(IceCandidate candidate)
+    {
+        JingleIQ  iq = JingleUtils.createTransportInfo(offererJid, candidate);
+        connection.sendPacket(iq);
+        Log.i(TAG, "transport-info: "+iq.toXML());
+    }
 }
+

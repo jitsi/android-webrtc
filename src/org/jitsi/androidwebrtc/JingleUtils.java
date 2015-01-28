@@ -91,6 +91,7 @@ public class JingleUtils
     public static JingleIQ toJingle(SessionDescription sdp)
     {
         JingleIQ iq = new JingleIQ();
+        iq.setAction(JingleAction.SESSION_ACCEPT);
 
         ContentPacketExtension audioContent = createContentForMedia("audio", sdp);
         ContentPacketExtension videoContent = createContentForMedia("video", sdp);
@@ -268,6 +269,7 @@ public class JingleUtils
                 return null;
 
             IceUdpTransportPacketExtension transport = new IceUdpTransportPacketExtension();
+            /*
             for (String c : getCandidateLines(mediaType, sdp))
             {
                 String foundation = (c.split(":")[1]).split(" ")[0];
@@ -295,9 +297,54 @@ public class JingleUtils
                 transport.addCandidate(cpe);
             }
             content.addChildExtension(transport);
+            */
 
             return content;
         }
+
+    public static JingleIQ createTransportInfo(String jid, IceCandidate candidate)
+    {
+        JingleIQ iq = new JingleIQ();
+        iq.setAction(JingleAction.TRANSPORT_INFO);
+        iq.setTo(jid);
+
+        ContentPacketExtension content
+                = new ContentPacketExtension(
+                ContentPacketExtension.CreatorEnum.initiator,
+                candidate.sdpMid);
+        IceUdpTransportPacketExtension transport = new IceUdpTransportPacketExtension();
+        CandidatePacketExtension cpe = new CandidatePacketExtension();
+
+
+        String c = candidate.sdp;
+        String foundation = (c.split(":")[1]).split(" ")[0];
+        String component = c.split(" ")[1];
+        String protocol = c.split(" ")[2];
+        String priority = c.split(" ")[3];
+        String addr = c.split(" ")[4];
+        String port = c.split(" ")[5];
+        String typ = c.split(" ")[7];
+        String generation = c.split(" ")[9];
+
+        cpe.setPort(Integer.valueOf(port));
+        cpe.setFoundation(foundation);
+        cpe.setProtocol(protocol);
+        cpe.setPriority(Long.valueOf(priority));
+        cpe.setComponent(Integer.valueOf(component));
+        cpe.setIP(addr);
+        if ("host".equals(typ))
+            cpe.setType(CandidateType.host);
+        cpe.setGeneration(Integer.valueOf(generation));
+
+        transport.addCandidate(cpe);
+
+
+        transport.addCandidate(cpe);
+        content.addChildExtension(transport);
+        iq.addContent(content);
+
+        return iq;
+    }
 
 
 private static List<String> getCandidateLines(String mediaType, SessionDescription sdp)

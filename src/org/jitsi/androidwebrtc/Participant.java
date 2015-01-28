@@ -24,6 +24,7 @@ public class Participant implements PacketListener
     private SessionDescription bridgeOfferSdp;
     private AppRTCClient rtcClient;
     private String offererJid = null;
+    private String sid;
 
     public void join(AppRTCClient rtcClient, String xmppHostname, String xmppDomain, String mucJid, String nickname)
     {
@@ -121,6 +122,7 @@ public class Participant implements PacketListener
                                            "received");
                 this.bridgeOfferSdp = JingleUtils.toSdp(jiq, "offer");
                 offererJid = jiq.getFrom();
+                sid = jiq.getSID();
                 Log.d(TAG, bridgeOfferSdp.description);
 
                 rtcClient.acceptSessionInit(bridgeOfferSdp);
@@ -167,6 +169,7 @@ public class Participant implements PacketListener
     {
         JingleIQ sessionAccept = JingleUtils.toJingle(sdp);
         sessionAccept.setTo(offererJid);
+        sessionAccept.setSID(sid);
         Log.i(TAG, sessionAccept.toXML());
         connection.sendPacket(sessionAccept);
     }
@@ -235,6 +238,7 @@ public class Participant implements PacketListener
         JingleIQ  iq = JingleUtils.createTransportInfo(offererJid, candidate);
         if (iq != null)
         {
+            iq.setSID(sid);
             connection.sendPacket(iq);
             Log.i(TAG, "transport-info: " + iq.toXML());
         }

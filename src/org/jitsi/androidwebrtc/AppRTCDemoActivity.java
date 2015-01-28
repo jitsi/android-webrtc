@@ -49,24 +49,9 @@ import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.webrtc.DataChannel;
-import org.webrtc.IceCandidate;
-import org.webrtc.MediaConstraints;
-import org.webrtc.MediaStream;
-import org.webrtc.PeerConnection;
-import org.webrtc.PeerConnectionFactory;
-import org.webrtc.SdpObserver;
-import org.webrtc.SessionDescription;
-import org.webrtc.StatsObserver;
-import org.webrtc.StatsReport;
-import org.webrtc.VideoCapturer;
-import org.webrtc.VideoRenderer;
-import org.webrtc.VideoRendererGui;
-import org.webrtc.VideoSource;
-import org.webrtc.VideoTrack;
+import org.webrtc.*;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -187,6 +172,8 @@ public class AppRTCDemoActivity extends Activity
   private void connectToRoom(String roomUrl) {
     logAndToast("Connecting to room...");
     appRtcClient.connectToRoom(roomUrl);
+
+
   }
 
   // Toggle visibility of the heads-up display.
@@ -298,10 +285,10 @@ public class AppRTCDemoActivity extends Activity
 
     // Uncomment to get ALL WebRTC tracing and SENSITIVE libjingle logging.
     // NOTE: this _must_ happen while |factory| is alive!
-    // Logging.enableTracing(
-    //     "logcat:",
-    //     EnumSet.of(Logging.TraceLevel.TRACE_ALL),
-    //     Logging.Severity.LS_SENSITIVE);
+     Logging.enableTracing(
+         "logcat:",
+         EnumSet.of(Logging.TraceLevel.TRACE_ALL),
+         Logging.Severity.LS_SENSITIVE);
 
     {
       final PeerConnection finalPC = pc;

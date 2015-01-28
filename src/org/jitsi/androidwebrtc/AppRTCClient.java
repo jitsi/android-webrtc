@@ -44,9 +44,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 /**
  * Negotiates signaling for chatting with apprtc.appspot.com "rooms".
@@ -108,6 +106,48 @@ public class AppRTCClient {
       public void run()
       {
         participant.join(domain, domain, fullMuc, "androidtester");
+
+        final List<PeerConnection.IceServer> iceServers
+            = new ArrayList<PeerConnection.IceServer>();
+
+        MediaConstraints pcConstraints = new MediaConstraints();
+
+        MediaConstraints videoConstraints = new MediaConstraints();
+
+        MediaConstraints audioConstraints = new MediaConstraints();
+        audioConstraints.optional.add(
+            new MediaConstraints.KeyValuePair("googEchoCancellation", "true"));
+        audioConstraints.optional.add(
+            new MediaConstraints.KeyValuePair("googAutoGainControl", "true"));
+        audioConstraints.optional.add(
+            new MediaConstraints.KeyValuePair("googHighpassFilter", "true"));
+        audioConstraints.optional.add(
+            new MediaConstraints.KeyValuePair("googNoiseSupression", "true"));
+        audioConstraints.optional.add(
+            new MediaConstraints.KeyValuePair("googNoisesuppression2", "true"));
+        audioConstraints.optional.add(
+            new MediaConstraints.KeyValuePair("googEchoCancellation2", "true"));
+        audioConstraints.optional.add(
+            new MediaConstraints.KeyValuePair("googAutoGainControl2", "true"));
+
+        appRTCSignalingParameters = new AppRTCSignalingParameters(
+            iceServers,
+            "gaeBaseHref",
+            "channelToken",
+            "postMessageUrl",
+            true,
+            pcConstraints,
+            videoConstraints,
+            audioConstraints);
+
+        activity.runOnUiThread(new Runnable()
+        {
+          @Override
+          public void run()
+          {
+            iceServersObserver.onIceServers(iceServers);
+          }
+        });
       }
     }).start();
   }

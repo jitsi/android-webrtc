@@ -317,6 +317,8 @@ public class JingleUtils
 
 
         String c = candidate.sdp;
+        if(c.contains("tcp"))
+            return;
         String foundation = (c.split(":")[1]).split(" ")[0];
         String component = c.split(" ")[1];
         String protocol = c.split(" ")[2];

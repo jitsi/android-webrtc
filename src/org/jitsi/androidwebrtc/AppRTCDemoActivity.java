@@ -285,10 +285,10 @@ public class AppRTCDemoActivity extends Activity
 
     // Uncomment to get ALL WebRTC tracing and SENSITIVE libjingle logging.
     // NOTE: this _must_ happen while |factory| is alive!
-     Logging.enableTracing(
-         "logcat:",
-         EnumSet.of(Logging.TraceLevel.TRACE_ALL),
-         Logging.Severity.LS_SENSITIVE);
+     //Logging.enableTracing(
+     //    "logcat:",
+     //    EnumSet.of(Logging.TraceLevel.TRACE_ALL),
+     //    Logging.Severity.LS_SENSITIVE);
 
     {
       final PeerConnection finalPC = pc;
@@ -464,7 +464,9 @@ public class AppRTCDemoActivity extends Activity
   // Implementation detail: observe ICE & stream changes and react accordingly.
   private class PCObserver implements PeerConnection.Observer {
     @Override public void onIceCandidate(final IceCandidate candidate){
-      runOnUiThread(new Runnable() {
+      Log.i(TAG, "ICE CANDIDATE!!! " + candidate);
+      //FIXME here are ICE candidates to be sent as transport-info
+      /*runOnUiThread(new Runnable() {
           public void run() {
             JSONObject json = new JSONObject();
             jsonPut(json, "type", "candidate");
@@ -473,7 +475,7 @@ public class AppRTCDemoActivity extends Activity
             jsonPut(json, "candidate", candidate.sdp);
             sendMessage(json);
           }
-        });
+        });*/
     }
 
     @Override public void onError(){
@@ -554,6 +556,8 @@ public class AppRTCDemoActivity extends Activity
             pc.setLocalDescription(sdpObserver, sdp);
           }
         });
+
+      //FIXME here we create answer and send it back as session-accept
     }
 
     // Helper for sending local SDP (offer or answer, depending on role) to the

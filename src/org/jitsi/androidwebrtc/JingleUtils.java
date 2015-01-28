@@ -290,16 +290,16 @@ a=ssrc:2928659107 mslabel:mixedmslabel
                 String k = line.split(" ")[1].split(":")[0];
                 String v = line.split(" ")[1].split(":")[1];
                 if ("cname".equals(k))
-                    cname = v;
+                    cname = v.trim();
                 else if ("label".equals(k))
-                    label = v;
+                    label = v.trim();
                 else if ("msid".equals(k))
-                    msid = v;
+                    msid = v.trim();
                 else if ("mslabel".equals(k))
-                    mslabel = v;
+                    mslabel = v.trim();
             }
             if (msid != null)
-                msid += " " + label;
+                msid += " " + label.trim();
 
             SourcePacketExtension spe = new SourcePacketExtension();
             spe.setSSRC(Long.valueOf(ssrc));

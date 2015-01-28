@@ -1,5 +1,6 @@
 package org.jitsi.androidwebrtc;
 
+import android.util.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
 import org.jivesoftware.smack.*;
 import org.jivesoftware.smack.filter.*;
@@ -13,17 +14,18 @@ import org.webrtc.*;
  */
 public class Participant implements PacketListener
 {
-    private String xmppHostname = "test.hipchat.me";
-    private String xmppDomain = "test.hipchat.me";
+    private final String TAG = "Participant";
+
+    private String xmppHostname;
+    private String xmppDomain;
     private int port = 5222;
     private XMPPConnection connection;
     MultiUserChat muc;
-    private final Observer observer = new Observer();
-    private final PeerConnection peerConnection
-            = (new PeerConnectionFactory()).createPeerConnection(null, null, observer);
 
-    public void join(String mucJid, String nickname)
+    public void join(String xmppHostname, String xmppDomain, String mucJid, String nickname)
     {
+        this.xmppHostname = xmppHostname;
+        this.xmppDomain = xmppDomain;
         connect();
         joinMuc(mucJid, nickname);
     }
@@ -35,7 +37,7 @@ public class Participant implements PacketListener
                 xmppHostname,
                 port,
                 xmppDomain);
-        config.setDebuggerEnabled(true);
+        //config.setDebuggerEnabled(true);
 
         connection = new XMPPConnection(config);
         connection.addPacketListener(this, new PacketFilter()
@@ -55,7 +57,7 @@ public class Participant implements PacketListener
         }
         catch (Exception e)
         {
-            System.err.println(""+e);
+            Log.e(TAG, "Error connecting XMPP", e);
         }
     }
 
@@ -88,14 +90,14 @@ public class Participant implements PacketListener
                  */
                 if((e.getXMPPError() != null) && (e.getXMPPError().getCode() == 409))
                 {
-                    System.err.println(nickname + " nickname already used, "
+                    Log.e(TAG, nickname + " nickname already used, "
                                         + "changing to " + nickname + '_');
                     nickname=nickname+'_';
                     continue;
                 }
                 else
                 {
-                    System.err.println(nickname + " : could not enter MUC " + e);
+                    Log.e(TAG, nickname + " : could not enter MUC " + e);
                     muc = null;
                 }
             }
@@ -137,6 +139,20 @@ public class Participant implements PacketListener
     {
         IQ ackPacket = IQ.createResultIQ(packetToAck);
         connection.sendPacket(ackPacket);
+    }
+
+    public void disconnect()
+    {
+        if (muc != null)
+        {
+            muc.leave();
+            muc = null;
+        }
+        if (connection != null)
+        {
+            connection.disconnect();
+            connection = null;
+        }
     }
 
     private static class Observer implements PeerConnection.Observer

@@ -31,6 +31,8 @@ import android.app.Activity;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
+import org.jivesoftware.smack.provider.*;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -64,6 +66,7 @@ public class AppRTCClient {
   // These members are only read/written under sendQueue's lock.
   private LinkedList<String> sendQueue = new LinkedList<String>();
   private AppRTCSignalingParameters appRTCSignalingParameters;
+  private Participant participant;
 
   /**
    * Callback fired once the room's signaling parameters specify the set of
@@ -87,12 +90,26 @@ public class AppRTCClient {
    * on its GAE Channel.
    */
   public void connectToRoom(String url) {
-    while (url.indexOf('?') < 0) {
-      // Keep redirecting until we get a room number.
-      (new RedirectResolver()).execute(url);
-      return;  // RedirectResolver above calls us back with the next URL.
-    }
-    (new RoomParameterGetter()).execute(url);
+
+    final String domain = url.substring(url.indexOf("://")+3, url.lastIndexOf("/"));
+    String room = url.substring(url.lastIndexOf("/")+1);
+    final String fullMuc = room + "@conference." + domain;
+    Log.i(TAG, "Domain: '"+domain+"' room: '" + room +"' muc: '" + fullMuc +"'");
+
+    ProviderManager.getInstance().addIQProvider(
+        JingleIQ.ELEMENT_NAME,
+        JingleIQ.NAMESPACE,
+        new JingleIQProvider());
+
+    this.participant = new Participant();
+    new Thread(new Runnable()
+    {
+      @Override
+      public void run()
+      {
+        participant.join(domain, domain, fullMuc, "androidtester");
+      }
+    }).start();
   }
 
   /**
@@ -102,6 +119,11 @@ public class AppRTCClient {
     if (channelClient != null) {
       channelClient.close();
       channelClient = null;
+    }
+    if (participant != null)
+    {
+      participant.disconnect();
+      participant = null;
     }
   }
 

@@ -16,6 +16,8 @@ public class Main
                 new JingleIQProvider());
         System.err.println("Main.main");
         Participant participant = new Participant();
-        participant.join("test@conference.test.hipchat.me", "testnickname");
+        String domain = "test.hipchat.me";
+        participant.join(
+            domain, domain, "test@conference.test.hipchat.me", "testnickname");
     }
 }

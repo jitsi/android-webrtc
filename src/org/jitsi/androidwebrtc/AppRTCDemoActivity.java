@@ -168,7 +168,7 @@ public class AppRTCDemoActivity extends Activity
 
   private void showGetRoomUI() {
     final EditText roomInput = new EditText(this);
-    roomInput.setText("https://apprtc.appspot.com/?r=");
+    roomInput.setText("https://test.hipchat.me/test");
     roomInput.setSelection(roomInput.getText().length());
     DialogInterface.OnClickListener listener =
         new DialogInterface.OnClickListener() {
@@ -247,16 +247,19 @@ public class AppRTCDemoActivity extends Activity
 
   @Override
   public void onPause() {
+    Log.d(TAG, "onPause");
     super.onPause();
     vsv.onPause();
     if (videoSource != null) {
       videoSource.stop();
       videoSourceStopped = true;
     }
+    appRtcClient.disconnect();
   }
 
   @Override
   public void onResume() {
+    Log.d(TAG, "onResume");
     super.onResume();
     vsv.onResume();
     if (videoSource != null && videoSourceStopped) {

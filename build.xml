@@ -28,6 +28,12 @@
 		<pathelement location="${output}" />
 	</path>
 
+	<target name="define-jarjar">
+		<!-- task to rename packages in jar files -->
+		<taskdef name="jarjar" classname="com.tonicsystems.jarjar.JarJarTask"
+				 classpath="lib/installer-exclude/jarjar.jar"/>
+	</target>
+
 	<target name="clean" description="Remove all compiled/generaged files and prepare for a compile/build.">
 		<delete failonerror="false" includeemptydirs="true">
 			<fileset dir="${output}" />
@@ -62,5 +68,104 @@
 	</target>
 
 	<target name="rebuild" depends="clean,compile" description="Clean and build the project." />
+
+	<target name="setup-libs" depends="define-jarjar">
+		<mkdir dir="libs"/>
+
+		<!-- fix loading some classes -->
+		<jarjar jarfile="libs/protocol.jar">
+			<zipfileset src="lib/bundles/protocol.jar"/>
+			<rule pattern="java.awt.**"
+				  result="org.jitsi.android.util.java.awt.@1"/>
+			<rule pattern="javax.swing.**"
+				  result="org.jitsi.android.util.javax.swing.@1"/>
+			<rule pattern="javax.sound.**"
+				  result="org.jitsi.android.util.javax.sound.@1"/>
+		</jarjar>
+
+		<!-- renaming packages in order to use vanilla smack in android -->
+		<jarjar jarfile="libs/smacklib.jar">
+			<zipfileset src="lib/bundles/smacklib.jar"/>
+			<rule pattern="org.xmlpull.v1.**"
+				  result="org.jitsi.org.xmlpull.v1.@1"/>
+
+			<!-- Renames missing java.beans classes -->
+			<rule pattern="java.beans.PropertyDescriptor"
+				  result="org.jitsi.android.util.java.beans.PropertyDescriptor"/>
+			<rule pattern="java.beans.PropertyEditor"
+				  result="org.jitsi.android.util.java.beans.PropertyEditor"/>
+
+			<rule pattern="javax.security.sasl.**"
+				  result="org.apache.harmony.javax.security.sasl.@1"/>
+			<rule pattern="javax.security.auth.**"
+				  result="org.apache.harmony.javax.security.auth.@1"/>
+		</jarjar>
+		<!-- renaming packages in order to use vanilla smack in android -->
+		<jarjar jarfile="libs/protocol-jabber.jar">
+			<zipfileset src="lib/bundles/protocol-jabber.jar"/>
+			<rule pattern="org.xmlpull.v1.**"
+				  result="org.jitsi.org.xmlpull.v1.@1"/>
+
+			<!-- Renames missing java.beans classes -->
+			<rule pattern="java.beans.PropertyDescriptor"
+				  result="org.jitsi.android.util.java.beans.PropertyDescriptor"/>
+			<rule pattern="java.beans.PropertyEditor"
+				  result="org.jitsi.android.util.java.beans.PropertyEditor"/>
+
+			<rule pattern="javax.security.sasl.**"
+				  result="org.apache.harmony.javax.security.sasl.@1"/>
+			<rule pattern="javax.security.auth.**"
+				  result="org.apache.harmony.javax.security.auth.@1"/>
+
+			<rule pattern="java.awt.**"
+				  result="org.jitsi.android.util.java.awt.@1"/>
+		</jarjar>
+
+		<!-- and finally the stubs we use for common java
+         packages that are missing in android, in order to
+         use the desktop version of files without modification
+         and for easy merging-->
+		<jarjar jarfile="libs/java-stubs.jar">
+			<zipfileset src="lib/java-stubs.jar"/>
+			<rule pattern="java.awt.**"
+				  result="org.jitsi.android.util.java.awt.@1"/>
+			<!--
+                We have only PropertyDescriptor and PropertyEditor defined
+                (the rest is in Android core), so only those 2 classes are
+                renamed in our bundles(above).
+            -->
+			<rule pattern="java.beans.**"
+				  result="org.jitsi.android.util.java.beans.@1"/>
+			<rule pattern="javax.sound.**"
+				  result="org.jitsi.android.util.javax.sound.@1"/>
+			<rule pattern="javax.swing.**"
+				  result="org.jitsi.android.util.javax.swing.@1"/>
+		</jarjar>
+
+		<copy todir="libs" verbose="true">
+			<fileset dir="lib">
+				<include name="*.jar"/>
+				<or>
+					<modified/>
+					<present present="srconly" targetdir="libs"/>
+				</or>
+			</fileset>
+			<fileset dir="lib/bundles">
+				<include name="*.jar"/>
+				<or>
+					<modified/>
+					<present present="srconly" targetdir="libs"/>
+				</or>
+			</fileset>
+			<fileset dir="lib/native">
+				<include name="**/*"/>
+				<or>
+					<modified/>
+					<present present="srconly" targetdir="libs"/>
+				</or>
+			</fileset>
+		</copy>
+	</target>
+
 
 </project>

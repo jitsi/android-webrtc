@@ -13,6 +13,7 @@ public class JingleUtils
     {
         StringBuilder sb = new StringBuilder();
 
+        sb.append("v=0").append(NL);
         sb.append("o=- 1923518516 2 IN IP4 0.0.0.0").append(NL);
         sb.append("s=-").append(NL);
         sb.append("t=0 0").append(NL);

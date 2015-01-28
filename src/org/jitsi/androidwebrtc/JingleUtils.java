@@ -294,10 +294,12 @@ a=ssrc:2928659107 mslabel:mixedmslabel
                 else if ("label".equals(k))
                     label = v;
                 else if ("msid".equals(k))
-                    msid = v + " " + label;
+                    msid = v;
                 else if ("mslabel".equals(k))
                     mslabel = v;
             }
+            if (msid != null)
+                msid += " " + label;
 
             SourcePacketExtension spe = new SourcePacketExtension();
             spe.setSSRC(Long.valueOf(ssrc));

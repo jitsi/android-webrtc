@@ -356,8 +356,24 @@ a=ssrc:2928659107 mslabel:mixedmslabel
 
                 transport.addCandidate(cpe);
             }
-            content.addChildExtension(transport);
             */
+            String ufrag=null, icepwd=null, fp=null;
+            for (String line : getMediaIceLines(mediaType, sdp))
+            {
+                if (line.contains("frag"))
+                    ufrag=line.split(":")[1].trim();
+                else if (line.contains("pwd"))
+                    icepwd=line.split(":")[1].trim();
+                else if (line.contains("nger"))
+                    fp=line.split(" ")[1].trim();
+            }
+            transport.setPassword(icepwd);
+            transport.setUfrag(ufrag);
+            DtlsFingerprintPacketExtension f = new DtlsFingerprintPacketExtension();
+            f.setFingerprint(fp);
+            f.setHash("sha-1");
+            transport.addChildExtension(f);
+            content.addChildExtension(transport);
 
             return content;
         }
@@ -434,4 +450,28 @@ private static List<String> getMediaSsrcLines(String mediaType, SessionDescripti
     return ret;
 
 }
+    private static List<String> getMediaIceLines(String mediaType, SessionDescription sdp)
+    {
+        String[] lines = sdp.description.split("\n");
+        Log.i("some", "SDP LINES: " + lines.length);
+        LinkedList<String> ret = new LinkedList<String>();
+
+        boolean in = false;
+        for (String s : lines)
+        {
+            if (s.startsWith("m="+mediaType))
+            {
+                in = true;
+                continue;
+            }
+            if (!in) continue;
+            if (s.startsWith("m="))
+                return ret;
+            if (s.startsWith("a=ice") || s.startsWith("a=finge"))
+                ret.add(s);
+        }
+
+        return ret;
+
+    }
 }

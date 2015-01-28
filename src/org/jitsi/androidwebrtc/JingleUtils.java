@@ -17,10 +17,13 @@ public class JingleUtils
         sb.append("o=- 1923518516 2 IN IP4 0.0.0.0").append(NL);
         sb.append("s=-").append(NL);
         sb.append("t=0 0").append(NL);
-        sb.append("a=group:BUNDLE audio video data").append(NL);
+        sb.append("a=group:BUNDLE audio video").append(NL);
 
         for (ContentPacketExtension cpe : iq.getContentList())
-            appendMLine(cpe, sb);
+        {
+            if(!"data".equals(cpe.getName()))
+                appendMLine(cpe, sb);
+        }
 
         return new SessionDescription(SessionDescription.Type.fromCanonicalForm(type),
                                       sb.toString());

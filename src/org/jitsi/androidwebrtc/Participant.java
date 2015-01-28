@@ -163,6 +163,14 @@ public class Participant implements PacketListener
         return bridgeOfferSdp;
     }
 
+    public void sendSessionAccept(SessionDescription sdp)
+    {
+        JingleIQ sessionAccept = JingleUtils.toJingle(sdp);
+        sessionAccept.setTo(offererJid);
+        Log.i(TAG, sessionAccept.toXML());
+        connection.sendPacket(sessionAccept);
+    }
+
     private static class Observer implements PeerConnection.Observer
     {
 
@@ -225,8 +233,11 @@ public class Participant implements PacketListener
     public void sendTransportInfo(IceCandidate candidate)
     {
         JingleIQ  iq = JingleUtils.createTransportInfo(offererJid, candidate);
-        connection.sendPacket(iq);
-        Log.i(TAG, "transport-info: "+iq.toXML());
+        if (iq != null)
+        {
+            connection.sendPacket(iq);
+            Log.i(TAG, "transport-info: " + iq.toXML());
+        }
     }
 }
 

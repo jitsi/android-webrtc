@@ -70,6 +70,11 @@ public class AppRTCClient {
     activity.setRemoteDescription(bridgeOfferSdp);
   }
 
+  public void sendSessionAccept(SessionDescription sdp)
+  {
+    participant.sendSessionAccept(sdp);
+  }
+
   /**
    * Callback fired once the room's signaling parameters specify the set of
    * ICE servers to use.

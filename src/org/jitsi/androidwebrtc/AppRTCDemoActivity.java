@@ -47,6 +47,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.*;
@@ -545,10 +546,12 @@ public class AppRTCDemoActivity extends Activity
       runOnUiThread(new Runnable() {
           public void run() {
             pc.setLocalDescription(sdpObserver, sdp);
-          }
-        });
 
-      //FIXME here we create answer and send it back as session-accept
+            appRtcClient.sendSessionAccept(sdp);
+
+          }
+        });//FIXME here we create answer and send it back as session-accept
+
     }
 
     // Helper for sending local SDP (offer or answer, depending on role) to the

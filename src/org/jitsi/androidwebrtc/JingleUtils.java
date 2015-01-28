@@ -292,7 +292,7 @@ a=ssrc:2928659107 mslabel:mixedmslabel
                 else if ("label".equals(k))
                     label = v;
                 else if ("msid".equals(k))
-                    msid = v;
+                    msid = v + " " + label;
                 else if ("mslabel".equals(k))
                     mslabel = v;
             }
@@ -413,6 +413,7 @@ private static List<String> getMediaSsrcLines(String mediaType, SessionDescripti
     boolean in = false;
     for (String s : lines)
     {
+        if (s.startsWith("m="+mediaType))
         if ( ("m="+mediaType).equals(s))
         {
             in = true;

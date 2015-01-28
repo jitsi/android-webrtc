@@ -75,7 +75,7 @@ public class JingleUtils
         {
             sb.append("a=candidate:").append(candidate.getFoundation()).append(' ').append(candidate.getComponent());
             sb.append(' ').append(candidate.getProtocol()).append(' ').append(candidate.getPriority());
-            sb.append(' ').append(candidate.getIP()).append(' ').append(candidate.getPort()).append(" typ");
+            sb.append(' ').append(candidate.getIP()).append(' ').append(candidate.getPort()).append(" typ ");
             sb.append(candidate.getType().toString()).append(" generation ").append(candidate.getGeneration());
             sb.append(NL);
         }

@@ -1,5 +1,6 @@
 package org.jitsi.androidwebrtc;
 
+import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
 import org.webrtc.*;
 
@@ -111,12 +112,14 @@ public class JingleUtils
 
             content.setSenders(ContentPacketExtension.SendersEnum.both);
 
+            RtpDescriptionPacketExtension d;
             // FIXME: re-use Format and EncodingConfiguration
             // to construct the offer
             if (mediaType.equals("audio"))
             {
                 RtpDescriptionPacketExtension rtpDesc
                         = new RtpDescriptionPacketExtension();
+                d = rtpDesc;
 
                 rtpDesc.setMedia("audio");
 
@@ -200,11 +203,14 @@ public class JingleUtils
                 // a=maxptime:60
                 rtpDesc.setAttribute("maxptime", "60");
                 content.addChildExtension(rtpDesc);
+
+
             }
             else if (mediaType.equals("video"))
             {
                 RtpDescriptionPacketExtension rtpDesc
                         = new RtpDescriptionPacketExtension();
+                d = rtpDesc;
 
                 rtpDesc.setMedia("video");
 
@@ -267,6 +273,56 @@ public class JingleUtils
             }
             else
                 return null;
+
+                /*
+a=ssrc:2928659107 cname:mixed
+a=ssrc:2928659107 label:mixedlabelaudio0
+a=ssrc:2928659107 msid:mixedmslabel mixedlabelaudio0
+a=ssrc:2928659107 mslabel:mixedmslabel
+                 */
+            String cname = null, label = null, msid = null, mslabel = null,ssrc = null;
+            for (String line : getMediaSsrcLines(mediaType, sdp))
+            {
+                if (ssrc == null)
+                    ssrc = line.split(" ")[0].split(":")[1];
+                String k = line.split(" ")[1].split(":")[0];
+                String v = line.split(" ")[1].split(":")[1];
+                if ("cname".equals(k))
+                    cname = v;
+                else if ("label".equals(k))
+                    label = v;
+                else if ("msid".equals(k))
+                    msid = v;
+                else if ("mslabel".equals(k))
+                    mslabel = v;
+            }
+
+            SourcePacketExtension spe = new SourcePacketExtension();
+            spe.setSSRC(Long.valueOf(ssrc));
+
+            ParameterPacketExtension p = new ParameterPacketExtension();
+
+            p.setName("cname");
+            p.setValue(cname);
+            spe.addParameter(p);
+
+            p = new ParameterPacketExtension();
+            p.setName("label");
+            p.setValue(label);
+            spe.addParameter(p);
+
+            p = new ParameterPacketExtension();
+            p.setName("msid");
+            p.setValue(msid);
+            spe.addParameter(p);
+
+            p = new ParameterPacketExtension();
+            p.setName("mslabel");
+            p.setValue(mslabel);
+            spe.addParameter(p);
+
+            if (d !=null)
+                d.addChildExtension(spe);
 
             IceUdpTransportPacketExtension transport = new IceUdpTransportPacketExtension();
             /*
@@ -349,7 +405,7 @@ public class JingleUtils
     }
 
 
-private static List<String> getCandidateLines(String mediaType, SessionDescription sdp)
+private static List<String> getMediaSsrcLines(String mediaType, SessionDescription sdp)
 {
     String[] lines = sdp.description.split("\n");
     LinkedList<String> ret = new LinkedList<String>();
@@ -365,9 +421,8 @@ private static List<String> getCandidateLines(String mediaType, SessionDescripti
         if (!in) continue;
         if (s.startsWith("m="))
             return ret;
-        if (s.startsWith("a=candida"))
-            if (!s.contains("relay")) //skip relay cands
-                ret.add(s);
+        if (s.startsWith("a=ssrc"))
+            ret.add(s);
     }
 
     return ret;

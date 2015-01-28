@@ -68,7 +68,7 @@ public class JingleUtils
 
         for (RTPHdrExtPacketExtension ext : description.getExtmapList())
         {
-            sb.append("extmap:").append(ext.getID()).append(' ').append(ext.getURI()).append(NL);
+            sb.append("a=extmap:").append(ext.getID()).append(' ').append(ext.getURI()).append(NL);
         }
 
         for (CandidatePacketExtension candidate : transport.getCandidateList())

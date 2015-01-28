@@ -36,7 +36,7 @@ public class JingleUtils
         DtlsFingerprintPacketExtension dtls
                 = transport.getFirstChildOfType(DtlsFingerprintPacketExtension.class);
 
-        sb.append("m=audio 1 RTP/SAVPF");
+        sb.append("m=").append(cpe.getName()).append(" 1 RTP/SAVPF");
         for (PayloadTypePacketExtension pt : description.getPayloadTypes())
         {
             sb.append(" ").append(pt.getID());

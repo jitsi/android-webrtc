@@ -127,7 +127,8 @@ public class Participant implements PacketListener
     {
         System.err.println("accept jingle " + jiq.toXML());
 
-
+        SessionDescription sdp = JingleUtils.toSdp(jiq, "offer");
+        Log.d(TAG, sdp.description);
     }
 
     /**

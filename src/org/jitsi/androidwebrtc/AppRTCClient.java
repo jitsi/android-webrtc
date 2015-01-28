@@ -36,8 +36,7 @@ import org.jivesoftware.smack.provider.*;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.webrtc.MediaConstraints;
-import org.webrtc.PeerConnection;
+import org.webrtc.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -57,7 +56,7 @@ import java.util.*;
 public class AppRTCClient {
   private static final String TAG = "AppRTCClient";
   private GAEChannelClient channelClient;
-  private final Activity activity;
+  private final AppRTCDemoActivity activity;
   private final GAEChannelClient.MessageHandler gaeHandler;
   private final IceServersObserver iceServersObserver;
 
@@ -65,6 +64,11 @@ public class AppRTCClient {
   private LinkedList<String> sendQueue = new LinkedList<String>();
   private AppRTCSignalingParameters appRTCSignalingParameters;
   private Participant participant;
+
+  public void acceptSessionInit(SessionDescription bridgeOfferSdp)
+  {
+    activity.setRemoteDescription(bridgeOfferSdp);
+  }
 
   /**
    * Callback fired once the room's signaling parameters specify the set of
@@ -75,7 +79,7 @@ public class AppRTCClient {
   }
 
   public AppRTCClient(
-      Activity activity, GAEChannelClient.MessageHandler gaeHandler,
+      AppRTCDemoActivity activity, GAEChannelClient.MessageHandler gaeHandler,
       IceServersObserver iceServersObserver) {
     this.activity = activity;
     this.gaeHandler = gaeHandler;
@@ -94,6 +98,43 @@ public class AppRTCClient {
     final String fullMuc = room + "@conference." + domain;
     Log.i(TAG, "Domain: '"+domain+"' room: '" + room +"' muc: '" + fullMuc +"'");
 
+    final List<PeerConnection.IceServer> iceServers
+        = new ArrayList<PeerConnection.IceServer>();
+
+    MediaConstraints pcConstraints = new MediaConstraints();
+    pcConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true"));
+
+    MediaConstraints videoConstraints = new MediaConstraints();
+
+    MediaConstraints audioConstraints = new MediaConstraints();
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googEchoCancellation", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googAutoGainControl", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googHighpassFilter", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googNoiseSupression", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googNoisesuppression2", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googEchoCancellation2", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googAutoGainControl2", "true"));
+
+    appRTCSignalingParameters = new AppRTCSignalingParameters(
+        iceServers,
+        "gaeBaseHref",
+        "channelToken",
+        "postMessageUrl",
+        false,
+        pcConstraints,
+        videoConstraints,
+        audioConstraints);
+
+    iceServersObserver.onIceServers(iceServers);
+
     ProviderManager.getInstance().addIQProvider(
         JingleIQ.ELEMENT_NAME,
         JingleIQ.NAMESPACE,
@@ -105,49 +146,8 @@ public class AppRTCClient {
       @Override
       public void run()
       {
-        participant.join(domain, domain, fullMuc, "androidtester");
-
-        final List<PeerConnection.IceServer> iceServers
-            = new ArrayList<PeerConnection.IceServer>();
-
-        MediaConstraints pcConstraints = new MediaConstraints();
-
-        MediaConstraints videoConstraints = new MediaConstraints();
-
-        MediaConstraints audioConstraints = new MediaConstraints();
-        audioConstraints.optional.add(
-            new MediaConstraints.KeyValuePair("googEchoCancellation", "true"));
-        audioConstraints.optional.add(
-            new MediaConstraints.KeyValuePair("googAutoGainControl", "true"));
-        audioConstraints.optional.add(
-            new MediaConstraints.KeyValuePair("googHighpassFilter", "true"));
-        audioConstraints.optional.add(
-            new MediaConstraints.KeyValuePair("googNoiseSupression", "true"));
-        audioConstraints.optional.add(
-            new MediaConstraints.KeyValuePair("googNoisesuppression2", "true"));
-        audioConstraints.optional.add(
-            new MediaConstraints.KeyValuePair("googEchoCancellation2", "true"));
-        audioConstraints.optional.add(
-            new MediaConstraints.KeyValuePair("googAutoGainControl2", "true"));
-
-        appRTCSignalingParameters = new AppRTCSignalingParameters(
-            iceServers,
-            "gaeBaseHref",
-            "channelToken",
-            "postMessageUrl",
-            true,
-            pcConstraints,
-            videoConstraints,
-            audioConstraints);
-
-        activity.runOnUiThread(new Runnable()
-        {
-          @Override
-          public void run()
-          {
-            iceServersObserver.onIceServers(iceServers);
-          }
-        });
+        participant.join(
+            AppRTCClient.this, domain, domain, fullMuc, "androidtester");
       }
     }).start();
   }
@@ -482,7 +482,8 @@ public class AppRTCClient {
       if (appRTCSignalingParameters == null) {
         return;
       }
-      try {
+      Log.i(TAG, "Draining queue");
+      /*try {
         for (String msg : sendQueue) {
           URLConnection connection = new URL(
               appRTCSignalingParameters.gaeBaseHref +
@@ -497,7 +498,7 @@ public class AppRTCClient {
         }
       } catch (IOException e) {
         throw new RuntimeException(e);
-      }
+      }*/
       sendQueue.clear();
     }
   }

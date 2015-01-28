@@ -455,6 +455,12 @@ public class AppRTCDemoActivity extends Activity
     return newSdpDescription.toString();
   }
 
+  public void setRemoteDescription(SessionDescription remoteDescription)
+  {
+    Log.i(TAG, "Set remote description: " + remoteDescription.description);
+    pc.setRemoteDescription(sdpObserver, remoteDescription);
+  }
+
   // Implementation detail: observe ICE & stream changes and react accordingly.
   private class PCObserver implements PeerConnection.Observer {
     @Override public void onIceCandidate(final IceCandidate candidate){
@@ -534,6 +540,11 @@ public class AppRTCDemoActivity extends Activity
     private SessionDescription localSdp;
 
     @Override public void onCreateSuccess(final SessionDescription origSdp) {
+
+      Log.i(TAG,
+          "SDP create success type: " + origSdp.type.canonicalForm()
+          + ", desc:" + origSdp.description);
+
       abortUnless(localSdp == null, "multiple SDP create?!?");
       final SessionDescription sdp = new SessionDescription(
           origSdp.type, preferISAC(origSdp.description));
@@ -559,31 +570,46 @@ public class AppRTCDemoActivity extends Activity
     }
 
     @Override public void onSetSuccess() {
-      runOnUiThread(new Runnable() {
-          public void run() {
-            if (appRtcClient.isInitiator()) {
-              if (pc.getRemoteDescription() != null) {
-                // We've set our local offer and received & set the remote
-                // answer, so drain candidates.
-                drainRemoteCandidates();
-              } else {
-                // We've just set our local description so time to send it.
-                sendLocalDescription();
-              }
-            } else {
-              if (pc.getLocalDescription() == null) {
-                // We just set the remote offer, time to create our answer.
-                logAndToast("Creating answer");
-                pc.createAnswer(SDPObserver.this, sdpMediaConstraints);
-              } else {
-                // Answer now set as local description; send it and drain
-                // candidates.
-                sendLocalDescription();
-                drainRemoteCandidates();
-              }
+
+      Log.i(TAG, "On SDP SET SUCCESS");
+
+      runOnUiThread(new Runnable()
+      {
+        public void run()
+        {
+          if (appRtcClient.isInitiator())
+          {
+            if (pc.getRemoteDescription() != null)
+            {
+              // We've set our local offer and received & set the remote
+              // answer, so drain candidates.
+              Log.i(TAG, "drainRemoteCandidates");
+              drainRemoteCandidates();
+            } else
+            {
+              // We've just set our local description so time to send it.
+              Log.i(TAG, "sendLocalDescription");
+              sendLocalDescription();
+            }
+          } else
+          {
+            if (pc.getLocalDescription() == null)
+            {
+              // We just set the remote offer, time to create our answer.
+              logAndToast("Creating answer");
+              Log.i(TAG, "createAnswer");
+              pc.createAnswer(SDPObserver.this, sdpMediaConstraints);
+            } else
+            {
+              // Answer now set as local description; send it and drain
+              // candidates.
+              Log.i(TAG, "sendAndDrain");
+              sendLocalDescription();
+              drainRemoteCandidates();
             }
           }
-        });
+        }
+      });
     }
 
     @Override public void onCreateFailure(final String error) {

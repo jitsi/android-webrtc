@@ -17,7 +17,7 @@ public class Main
         System.err.println("Main.main");
         Participant participant = new Participant();
         String domain = "test.hipchat.me";
-        participant.join(
-            domain, domain, "test@conference.test.hipchat.me", "testnickname");
+        //participant.join(
+          //  domain, domain, "test@conference.test.hipchat.me", "testnickname");
     }
 }

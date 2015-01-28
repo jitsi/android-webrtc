@@ -21,9 +21,12 @@ public class Participant implements PacketListener
     private int port = 5222;
     private XMPPConnection connection;
     MultiUserChat muc;
+    private SessionDescription bridgeOfferSdp;
+    private AppRTCClient rtcClient;
 
-    public void join(String xmppHostname, String xmppDomain, String mucJid, String nickname)
+    public void join(AppRTCClient rtcClient, String xmppHostname, String xmppDomain, String mucJid, String nickname)
     {
+        this.rtcClient = rtcClient;
         this.xmppHostname = xmppHostname;
         this.xmppDomain = xmppDomain;
         connect();
@@ -115,20 +118,17 @@ public class Participant implements PacketListener
             case SESSION_INITIATE:
                 System.err.println(" : Jingle session-initiate " +
                                            "received");
-                    acceptJingleSession(jiq);
+                this.bridgeOfferSdp = JingleUtils.toSdp(jiq, "offer");
+                Log.d(TAG, bridgeOfferSdp.description);
+
+                rtcClient.acceptSessionInit(bridgeOfferSdp);
+
+                break;
             default:
                 System.err.println(" : Unknown Jingle IQ received : "
                                     + jiq.toString());
                 break;
         }
-    }
-
-    private void acceptJingleSession(JingleIQ jiq)
-    {
-        System.err.println("accept jingle " + jiq.toXML());
-
-        SessionDescription sdp = JingleUtils.toSdp(jiq, "offer");
-        Log.d(TAG, sdp.description);
     }
 
     /**
@@ -154,6 +154,11 @@ public class Participant implements PacketListener
             connection.disconnect();
             connection = null;
         }
+    }
+
+    public SessionDescription getBridgeOfferSdp()
+    {
+        return bridgeOfferSdp;
     }
 
     private static class Observer implements PeerConnection.Observer

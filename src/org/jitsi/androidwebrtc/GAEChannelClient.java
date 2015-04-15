@@ -39,135 +39,176 @@ import android.webkit.WebViewClient;
 /**
  * Java-land version of Google AppEngine's JavaScript Channel API:
  * https://developers.google.com/appengine/docs/python/channel/javascript
- *
+ * <p/>
  * Requires a hosted HTML page that opens the desired channel and dispatches JS
  * on{Open,Message,Close,Error}() events to a global object named
  * "androidMessageHandler".
  */
-public class GAEChannelClient {
-  private static final String TAG = "GAEChannelClient";
-  private WebView webView;
-  private final ProxyingMessageHandler proxyingMessageHandler;
+public class GAEChannelClient
+{
+    private static final String TAG = "GAEChannelClient";
+    private WebView webView;
+    private final ProxyingMessageHandler proxyingMessageHandler;
 
-  /**
-   * Callback interface for messages delivered on the Google AppEngine channel.
-   *
-   * Methods are guaranteed to be invoked on the UI thread of |activity| passed
-   * to GAEChannelClient's constructor.
-   */
-  public interface MessageHandler {
-    public void onOpen();
-    public void onMessage(String data);
-    public void onClose();
-    public void onError(int code, String description);
-  }
+    /**
+     * Callback interface for messages delivered on the Google AppEngine channel.
+     * <p/>
+     * Methods are guaranteed to be invoked on the UI thread of |activity| passed
+     * to GAEChannelClient's constructor.
+     */
+    public interface MessageHandler
+    {
+        public void onOpen();
 
-  /** Asynchronously open an AppEngine channel. */
-  @SuppressLint("SetJavaScriptEnabled")
-  public GAEChannelClient(
-      Activity activity, String token, MessageHandler handler) {
-    webView = new WebView(activity);
-    webView.getSettings().setJavaScriptEnabled(true);
-    webView.setWebChromeClient(new WebChromeClient() {  // Purely for debugging.
-        public boolean onConsoleMessage (ConsoleMessage msg) {
-          Log.d(TAG, "console: " + msg.message() + " at " +
-              msg.sourceId() + ":" + msg.lineNumber());
-          return false;
+        public void onMessage(String data);
+
+        public void onClose();
+
+        public void onError(int code, String description);
+    }
+
+    /**
+     * Asynchronously open an AppEngine channel.
+     */
+    @SuppressLint("SetJavaScriptEnabled")
+    public GAEChannelClient(
+            Activity activity, String token, MessageHandler handler)
+    {
+        webView = new WebView(activity);
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.setWebChromeClient(new WebChromeClient()
+        {  // Purely for debugging.
+            public boolean onConsoleMessage(ConsoleMessage msg)
+            {
+                Log.d(TAG, "console: " + msg.message() + " at " +
+                        msg.sourceId() + ":" + msg.lineNumber());
+                return false;
+            }
+        });
+        webView.setWebViewClient(new WebViewClient()
+        {  // Purely for debugging.
+            public void onReceivedError(
+                    WebView view, int errorCode, String description,
+                    String failingUrl)
+            {
+                Log.e(TAG, "JS error: " + errorCode + " in " + failingUrl +
+                        ", desc: " + description);
+            }
+        });
+        proxyingMessageHandler =
+                new ProxyingMessageHandler(activity, handler, token);
+        webView.addJavascriptInterface(
+                proxyingMessageHandler, "androidMessageHandler");
+        webView.loadUrl("file:///android_asset/channel.html");
+    }
+
+    /**
+     * Close the connection to the AppEngine channel.
+     */
+    public void close()
+    {
+        if (webView == null)
+        {
+            return;
         }
-      });
-    webView.setWebViewClient(new WebViewClient() {  // Purely for debugging.
-        public void onReceivedError(
-            WebView view, int errorCode, String description,
-            String failingUrl) {
-          Log.e(TAG, "JS error: " + errorCode + " in " + failingUrl +
-              ", desc: " + description);
+        proxyingMessageHandler.disconnect();
+        webView.removeJavascriptInterface("androidMessageHandler");
+        webView.loadUrl("about:blank");
+        webView = null;
+    }
+
+    // Helper class for proxying callbacks from the Java<->JS interaction
+    // (private, background) thread to the Activity's UI thread.
+    private static class ProxyingMessageHandler
+    {
+        private final Activity activity;
+        private final MessageHandler handler;
+        private final boolean[] disconnected = {false};
+        private final String token;
+
+        public ProxyingMessageHandler(Activity activity, MessageHandler handler,
+                                      String token)
+        {
+            this.activity = activity;
+            this.handler = handler;
+            this.token = token;
         }
-      });
-    proxyingMessageHandler =
-        new ProxyingMessageHandler(activity, handler, token);
-    webView.addJavascriptInterface(
-        proxyingMessageHandler, "androidMessageHandler");
-    webView.loadUrl("file:///android_asset/channel.html");
-  }
 
-  /** Close the connection to the AppEngine channel. */
-  public void close() {
-    if (webView == null) {
-      return;
+        public void disconnect()
+        {
+            disconnected[0] = true;
+        }
+
+        private boolean disconnected()
+        {
+            return disconnected[0];
+        }
+
+        @JavascriptInterface
+        public String getToken()
+        {
+            return token;
+        }
+
+        @JavascriptInterface
+        public void onOpen()
+        {
+            activity.runOnUiThread(new Runnable()
+            {
+                public void run()
+                {
+                    if (!disconnected())
+                    {
+                        handler.onOpen();
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void onMessage(final String data)
+        {
+            activity.runOnUiThread(new Runnable()
+            {
+                public void run()
+                {
+                    if (!disconnected())
+                    {
+                        handler.onMessage(data);
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void onClose()
+        {
+            activity.runOnUiThread(new Runnable()
+            {
+                public void run()
+                {
+                    if (!disconnected())
+                    {
+                        handler.onClose();
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void onError(
+                final int code, final String description)
+        {
+            activity.runOnUiThread(new Runnable()
+            {
+                public void run()
+                {
+                    if (!disconnected())
+                    {
+                        handler.onError(code, description);
+                    }
+                }
+            });
+        }
     }
-    proxyingMessageHandler.disconnect();
-    webView.removeJavascriptInterface("androidMessageHandler");
-    webView.loadUrl("about:blank");
-    webView = null;
-  }
-
-  // Helper class for proxying callbacks from the Java<->JS interaction
-  // (private, background) thread to the Activity's UI thread.
-  private static class ProxyingMessageHandler {
-    private final Activity activity;
-    private final MessageHandler handler;
-    private final boolean[] disconnected = { false };
-    private final String token;
-
-    public
-     ProxyingMessageHandler(Activity activity, MessageHandler handler,
-                            String token) {
-      this.activity = activity;
-      this.handler = handler;
-      this.token = token;
-    }
-
-    public void disconnect() {
-      disconnected[0] = true;
-    }
-
-    private boolean disconnected() {
-      return disconnected[0];
-    }
-
-    @JavascriptInterface public String getToken() {
-      return token;
-    }
-
-    @JavascriptInterface public void onOpen() {
-      activity.runOnUiThread(new Runnable() {
-          public void run() {
-            if (!disconnected()) {
-              handler.onOpen();
-            }
-          }
-        });
-    }
-
-    @JavascriptInterface public void onMessage(final String data) {
-      activity.runOnUiThread(new Runnable() {
-          public void run() {
-            if (!disconnected()) {
-              handler.onMessage(data);
-            }
-          }
-        });
-    }
-
-    @JavascriptInterface public void onClose() {
-      activity.runOnUiThread(new Runnable() {
-          public void run() {
-            if (!disconnected()) {
-              handler.onClose();
-            }
-          }
-        });
-    }
-
-    @JavascriptInterface public void onError(
-        final int code, final String description) {
-      activity.runOnUiThread(new Runnable() {
-          public void run() {
-            if (!disconnected()) {
-              handler.onError(code, description);
-            }
-          }
-        });
-    }
-  }
 }

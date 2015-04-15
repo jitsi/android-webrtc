@@ -17,7 +17,8 @@ import java.util.*;
 /**
  * Created by boris on 27/01/15.
  */
-public class Participant implements PacketListener
+public class Participant
+        implements PacketListener
 {
     private final String TAG = "Participant";
 
@@ -119,20 +120,22 @@ public class Participant implements PacketListener
         if (message.length() < partLen)
         {
             Log.d(tag, message);
-        } else {
+        }
+        else
+        {
             int parts = message.length() / partLen;
             int mod = message.length() % partLen;
-            for (int i =0 ; i < parts; i++)
+            for (int i = 0; i < parts; i++)
             {
                 Log.d(tag,
-                    "PART " + i + ": "
-                            + message.substring(i*partLen, (i+1)*partLen));
+                        "PART " + i + ": "
+                                + message.substring(i * partLen, (i + 1) * partLen));
             }
             if (mod > 0)
             {
                 Log.d(tag,
-                    "PART " + parts + ": "
-                            + message.substring(parts*partLen, message.length()));
+                        "PART " + parts + ": "
+                                + message.substring(parts * partLen, message.length()));
             }
         }
     }
@@ -143,14 +146,14 @@ public class Participant implements PacketListener
 
         muc.addPresenceInterceptor(new PresenceInterceptor());
 
-        while(true)
+        while (true)
         {
             try
             {
                 muc.join(nickname);
 
-                muc.sendMessage("Hello World! "+nickname);
-                System.err.println("Hello World! "+nickname);
+                muc.sendMessage("Hello World! " + nickname);
+                System.err.println("Hello World! " + nickname);
 
                 /*
                  * Send a Presence packet containing a Nick extension so that the
@@ -167,11 +170,11 @@ public class Participant implements PacketListener
                  * IF the nickname is already taken in the MUC (code 409)
                  * then we append '_' to the nickname, and retry
                  */
-                if((e.getXMPPError() != null) && (e.getXMPPError().getCode() == 409))
+                if ((e.getXMPPError() != null) && (e.getXMPPError().getCode() == 409))
                 {
                     Log.e(TAG, nickname + " nickname already used, "
-                                        + "changing to " + nickname + '_');
-                    nickname=nickname+'_';
+                            + "changing to " + nickname + '_');
+                    nickname = nickname + '_';
                     continue;
                 }
                 else
@@ -218,7 +221,7 @@ public class Participant implements PacketListener
                     break;
             }
         }
-        catch(Exception e)
+        catch (Exception e)
         {
 
             Log.e(TAG, "Error", e);
@@ -228,6 +231,7 @@ public class Participant implements PacketListener
     /**
      * This function simply create an ACK packet to acknowledge the Jingle IQ
      * packet <tt>packetToAck</tt>.
+     *
      * @param packetToAck the <tt>JingleIQ</tt> that need to be acknowledge.
      */
     private void ackJingleIQ(JingleIQ packetToAck)
@@ -279,7 +283,7 @@ public class Participant implements PacketListener
                 : mediaSSRCs.getSSRCsForMedia("audio"))
         {
             MediaPresenceExtension.Source ssrc
-                = new MediaPresenceExtension.Source();
+                    = new MediaPresenceExtension.Source();
             ssrc.setMediaType("audio");
             ssrc.setSSRC(String.valueOf(audioSSRC.getSSRC()));
 
@@ -307,7 +311,7 @@ public class Participant implements PacketListener
     {
         /**
          * {@inheritDoc}
-         *
+         * <p/>
          * Adds <tt>this.publishedConferenceExt</tt> as the only
          * <tt>ConferenceAnnouncementPacketExtension</tt> of <tt>packet</tt>.
          */
@@ -324,6 +328,7 @@ public class Participant implements PacketListener
     /**
      * Adds given <tt>PacketExtension</tt> to the MUC presence and publishes it
      * immediately.
+     *
      * @param extension the <tt>PacketExtension</tt> to be included in MUC
      *                  presence.
      */
@@ -361,7 +366,8 @@ public class Participant implements PacketListener
         }
     }
 
-    private static class Observer implements PeerConnection.Observer
+    private static class Observer
+            implements PeerConnection.Observer
     {
 
         @Override
@@ -378,7 +384,7 @@ public class Participant implements PacketListener
 
         @Override
         public void onIceGatheringChange(PeerConnection.IceGatheringState
-                                                         newState)
+                                                 newState)
         {
 
         }
@@ -422,7 +428,7 @@ public class Participant implements PacketListener
 
     public void sendTransportInfo(IceCandidate candidate)
     {
-        JingleIQ  iq = JingleUtils.createTransportInfo(offererJid, candidate);
+        JingleIQ iq = JingleUtils.createTransportInfo(offererJid, candidate);
         if (iq != null)
         {
             iq.setSID(sid);

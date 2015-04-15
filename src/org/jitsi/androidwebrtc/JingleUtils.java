@@ -27,7 +27,10 @@ public class JingleUtils
 
         for (ContentPacketExtension cpe : iq.getContentList())
         {
-            if(!"data".equals(cpe.getName()))
+            if(!"data".equals(cpe.getName())
+                    // FIXME: duplicate empty ContentPacketExtensions
+                    && cpe.getAttributeNames().size() != 1
+                    )
                 appendMLine(cpe, sb);
         }
 

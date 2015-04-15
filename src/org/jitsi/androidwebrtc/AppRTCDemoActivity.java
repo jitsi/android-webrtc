@@ -154,7 +154,7 @@ public class AppRTCDemoActivity extends Activity
 
   private void showGetRoomUI() {
     final EditText roomInput = new EditText(this);
-    roomInput.setText("https://boris.jitsi.net/test");
+    roomInput.setText("https://pawel.jitsi.net/test");
     roomInput.setSelection(roomInput.getText().length());
     DialogInterface.OnClickListener listener =
         new DialogInterface.OnClickListener() {
@@ -328,22 +328,28 @@ public class AppRTCDemoActivity extends Activity
 
     {
       logAndToast("Creating local video source...");
-      MediaStream lMS = factory.createLocalMediaStream("ARDAMS");
-      if (appRtcClient.videoConstraints() != null) {
-        VideoCapturer capturer = getVideoCapturer();
-        videoSource = factory.createVideoSource(
-            capturer, appRtcClient.videoConstraints());
-        VideoTrack videoTrack =
-            factory.createVideoTrack("ARDAMSv0", videoSource);
-        videoTrack.addRenderer(new VideoRenderer(localRender));
-        lMS.addTrack(videoTrack);
+        if (appRtcClient.audioConstraints() != null) {
+            MediaStream aMS = factory.createLocalMediaStream("AndroidAMS");
+            aMS.addTrack(factory.createAudioTrack(
+                    "AudioTrack",
+                    factory.createAudioSource(appRtcClient.audioConstraints())));
+            pc.addStream(aMS, new MediaConstraints());
+        }
+
+
+        if (appRtcClient.videoConstraints() != null) {
+            MediaStream vMS = factory.createLocalMediaStream("AndroidVMS");
+            VideoCapturer capturer = getVideoCapturer();
+            videoSource = factory.createVideoSource(
+                capturer, appRtcClient.videoConstraints());
+            VideoTrack videoTrack =
+                factory.createVideoTrack("VideoTrack", videoSource);
+            videoTrack.addRenderer(new VideoRenderer(localRender));
+            vMS.addTrack(videoTrack);
+
+            pc.addStream(vMS, new MediaConstraints());
       }
-      if (appRtcClient.audioConstraints() != null) {
-        lMS.addTrack(factory.createAudioTrack(
-            "ARDAMSa0",
-            factory.createAudioSource(appRtcClient.audioConstraints())));
-      }
-      pc.addStream(lMS, new MediaConstraints());
+
     }
     logAndToast("Waiting for ICE candidates...");
   }

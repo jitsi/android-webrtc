@@ -1,13 +1,18 @@
 package org.jitsi.androidwebrtc;
 
 import android.util.*;
+import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
+import net.java.sip.communicator.impl.protocol.jabber.extensions.jitsimeet.*;
+import org.jitsi.androidwebrtc.util.*;
 import org.jivesoftware.smack.*;
 import org.jivesoftware.smack.filter.*;
 import org.jivesoftware.smack.packet.*;
 import org.jivesoftware.smackx.muc.*;
 import org.jivesoftware.smackx.packet.*;
 import org.webrtc.*;
+
+import java.util.*;
 
 /**
  * Created by boris on 27/01/15.
@@ -45,6 +50,39 @@ public class Participant implements PacketListener
         //config.setDebuggerEnabled(true);
 
         connection = new XMPPConnection(config);
+
+        connection.addPacketListener(new PacketListener()
+        {
+            @Override
+            public void processPacket(Packet packet)
+            {
+                logLongString("XMPP", "<- " + packet.toXML());
+            }
+        }, new PacketFilter()
+        {
+            @Override
+            public boolean accept(Packet packet)
+            {
+                return true;
+            }
+        });
+
+        connection.addPacketSendingListener(new PacketListener()
+        {
+            @Override
+            public void processPacket(Packet packet)
+            {
+                logLongString("XMPP", "-> " + packet.toXML());
+            }
+        }, new PacketFilter()
+        {
+            @Override
+            public boolean accept(Packet packet)
+            {
+                return true;
+            }
+        });
+
         connection.addPacketListener(this, new PacketFilter()
         {
             public boolean accept(Packet packet)
@@ -59,6 +97,15 @@ public class Participant implements PacketListener
             connection.connect();
             connection.loginAnonymously();
             System.err.println("logged in");
+
+            /*ServiceDiscoveryManager discoManager
+                = ServiceDiscoveryManager.getInstanceFor(connection);
+            discoManager.addFeature("urn:xmpp:jingle:apps:rtp:audio");
+            discoManager.addFeature("urn:xmpp:jingle:apps:rtp:video");
+            discoManager.addFeature("urn:xmpp:jingle:transports:ice-udp:1");
+            discoManager.addFeature("urn:xmpp:jingle:transports:dtls-sctp:1");
+            discoManager.addFeature("urn:ietf:rfc:5761");
+            discoManager.addFeature("urn:ietf:rfc:5888");*/
         }
         catch (Exception e)
         {
@@ -66,9 +113,36 @@ public class Participant implements PacketListener
         }
     }
 
+    private void logLongString(String tag, String message)
+    {
+        int partLen = 1024;
+        if (message.length() < partLen)
+        {
+            Log.d(tag, message);
+        } else {
+            int parts = message.length() / partLen;
+            int mod = message.length() % partLen;
+            for (int i =0 ; i < parts; i++)
+            {
+                Log.d(tag,
+                    "PART " + i + ": "
+                            + message.substring(i*partLen, (i+1)*partLen));
+            }
+            if (mod > 0)
+            {
+                Log.d(tag,
+                    "PART " + parts + ": "
+                            + message.substring(parts*partLen, message.length()));
+            }
+        }
+    }
+
     private void joinMuc(String roomURL, String nickname)
     {
         muc = new MultiUserChat(connection, roomURL);
+
+        muc.addPresenceInterceptor(new PresenceInterceptor());
+
         while(true)
         {
             try
@@ -113,33 +187,41 @@ public class Participant implements PacketListener
     @Override
     public void processPacket(Packet packet)
     {
-        JingleIQ jiq = (JingleIQ)packet;
-        ackJingleIQ(jiq);
-        switch(jiq.getAction())
+        try
         {
-            case SESSION_INITIATE:
-                System.err.println(" : Jingle session-initiate " +
-                                           "received");
-                this.bridgeOfferSdp = JingleUtils.toSdp(jiq, "offer");
-                offererJid = jiq.getFrom();
-                sid = jiq.getSID();
-                Log.d(TAG, bridgeOfferSdp.description);
+            JingleIQ jiq = (JingleIQ) packet;
+            ackJingleIQ(jiq);
+            switch (jiq.getAction())
+            {
+                case SESSION_INITIATE:
+                    System.err.println(" : Jingle session-initiate " +
+                            "received");
+                    this.bridgeOfferSdp = JingleUtils.toSdp(jiq, "offer");
+                    offererJid = jiq.getFrom();
+                    sid = jiq.getSID();
+                    Log.d(TAG, bridgeOfferSdp.description);
 
-                rtcClient.acceptSessionInit(bridgeOfferSdp);
+                    rtcClient.acceptSessionInit(bridgeOfferSdp);
 
-                break;
-            case SOURCEADD:
-            case ADDSOURCE:
-                Log.i(TAG, "SOURCE ADD: " + jiq.toXML());
-                break;
-            case REMOVESOURCE:
-            case SOURCEREMOVE:
-                Log.i(TAG, "REMOVE SOURCE: " + jiq.toXML());
-                break;
-            default:
-                System.err.println(" : Unknown Jingle IQ received : "
-                                    + jiq.toString());
-                break;
+                    break;
+                case SOURCEADD:
+                case ADDSOURCE:
+                    Log.i(TAG, "SOURCE ADD: " + jiq.toXML());
+                    break;
+                case REMOVESOURCE:
+                case SOURCEREMOVE:
+                    Log.i(TAG, "REMOVE SOURCE: " + jiq.toXML());
+                    break;
+                default:
+                    System.err.println(" : Unknown Jingle IQ received : "
+                            + jiq.toString());
+                    break;
+            }
+        }
+        catch(Exception e)
+        {
+
+            Log.e(TAG, "Error", e);
         }
     }
 
@@ -180,7 +262,103 @@ public class Participant implements PacketListener
         sessionAccept.setSID(sid);
         sessionAccept.setType(IQ.Type.SET);
         Log.i(TAG, sessionAccept.toXML());
+
+        addStreamsToPresence(sessionAccept.getContentList());
+
         connection.sendPacket(sessionAccept);
+    }
+
+    private void addStreamsToPresence(List<ContentPacketExtension> contentList)
+    {
+        MediaSSRCMap mediaSSRCs = MediaSSRCMap.getSSRCsFromContent(contentList);
+
+        MediaPresenceExtension mediaPresence
+                = new MediaPresenceExtension();
+
+        for (SourcePacketExtension audioSSRC
+                : mediaSSRCs.getSSRCsForMedia("audio"))
+        {
+            MediaPresenceExtension.Source ssrc
+                = new MediaPresenceExtension.Source();
+            ssrc.setMediaType("audio");
+            ssrc.setSSRC(String.valueOf(audioSSRC.getSSRC()));
+
+            mediaPresence.addChildExtension(ssrc);
+        }
+
+        for (SourcePacketExtension videoSSRC
+                : mediaSSRCs.getSSRCsForMedia("video"))
+        {
+            MediaPresenceExtension.Source ssrc
+                    = new MediaPresenceExtension.Source();
+            ssrc.setMediaType("video");
+            ssrc.setSSRC(String.valueOf(videoSSRC.getSSRC()));
+
+            mediaPresence.addChildExtension(ssrc);
+        }
+
+        sendPresenceExtension(mediaPresence);
+    }
+
+    private Presence lastPresenceSent = null;
+
+    private class PresenceInterceptor
+            implements PacketInterceptor
+    {
+        /**
+         * {@inheritDoc}
+         *
+         * Adds <tt>this.publishedConferenceExt</tt> as the only
+         * <tt>ConferenceAnnouncementPacketExtension</tt> of <tt>packet</tt>.
+         */
+        @Override
+        public void interceptPacket(Packet packet)
+        {
+            if (packet instanceof Presence)
+            {
+                lastPresenceSent = (Presence) packet;
+            }
+        }
+    }
+
+    /**
+     * Adds given <tt>PacketExtension</tt> to the MUC presence and publishes it
+     * immediately.
+     * @param extension the <tt>PacketExtension</tt> to be included in MUC
+     *                  presence.
+     */
+    public void sendPresenceExtension(PacketExtension extension)
+    {
+        if (lastPresenceSent != null)
+        {
+            setPacketExtension(
+                    lastPresenceSent, extension, extension.getNamespace());
+
+            connection.sendPacket(lastPresenceSent);
+        }
+    }
+
+    private static void setPacketExtension(
+            Packet packet,
+            PacketExtension extension,
+            String namespace)
+    {
+        if (namespace == null || namespace.isEmpty())
+        {
+            return;
+        }
+
+        //clear previous announcements
+        PacketExtension pe;
+        while (null != (pe = packet.getExtension(namespace)))
+        {
+            packet.removeExtension(pe);
+        }
+
+        if (extension != null)
+        {
+            packet.addExtension(extension);
+        }
     }
 
     private static class Observer implements PeerConnection.Observer

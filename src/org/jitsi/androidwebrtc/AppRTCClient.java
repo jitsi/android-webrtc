@@ -31,6 +31,7 @@ import android.app.Activity;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
 import org.jivesoftware.smack.provider.*;
 import org.json.JSONArray;
@@ -143,6 +144,11 @@ public class AppRTCClient
                 audioConstraints);
 
         iceServersObserver.onIceServers(iceServers);
+
+        ProviderManager.getInstance().addIQProvider(
+                ColibriConferenceIQ.ELEMENT_NAME,
+                ColibriConferenceIQ.NAMESPACE,
+                new ColibriIQProvider());
 
         ProviderManager.getInstance().addIQProvider(
                 JingleIQ.ELEMENT_NAME,

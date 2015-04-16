@@ -1,5 +1,6 @@
 package org.jitsi.androidwebrtc;
 
+import android.hardware.*;
 import android.util.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
@@ -81,6 +82,19 @@ public class JingleUtils
         for (RTPHdrExtPacketExtension ext : description.getExtmapList())
         {
             sb.append("a=extmap:").append(ext.getID()).append(' ').append(ext.getURI()).append(NL);
+        }
+
+        for (SourcePacketExtension ssrc
+                : description.getChildExtensionsOfType(
+                SourcePacketExtension.class))
+        {
+            long ssrcL = ssrc.getSSRC();
+            for (ParameterPacketExtension param : ssrc.getParameters())
+            {
+                sb.append("a=ssrc:").append(ssrcL).append(" ")
+                        .append(param.getName())
+                        .append(":").append(param.getValue()).append(NL);
+            }
         }
 
         for (CandidatePacketExtension candidate : transport.getCandidateList())

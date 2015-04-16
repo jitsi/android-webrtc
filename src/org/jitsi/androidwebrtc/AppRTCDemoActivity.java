@@ -77,7 +77,14 @@ public class AppRTCDemoActivity
     private AppRTCClient appRtcClient = new AppRTCClient(this, gaeHandler, this);
     private AppRTCGLView vsv;
     private VideoRenderer.Callbacks localRender;
-    private VideoRenderer.Callbacks remoteRender;
+
+    private final static int MAX_REMOTE_COUNT = 15;
+
+    private VideoRenderer.Callbacks[] remoteRenders
+            = new VideoRenderer.Callbacks[MAX_REMOTE_COUNT];
+
+    private boolean[] renderedOccupied = new boolean[MAX_REMOTE_COUNT];
+
     private Toast logToast;
     private final LayoutParams hudLayout =
             new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
@@ -105,8 +112,27 @@ public class AppRTCDemoActivity
 
         vsv = new AppRTCGLView(this, displaySize);
         VideoRendererGui.setView(vsv);
-        remoteRender = VideoRendererGui.create(0, 0, 100, 100);
-        localRender = VideoRendererGui.create(70, 5, 25, 25);
+
+        localRender = VideoRendererGui.create(0, 0, 25, 25);
+
+        remoteRenders[0] = VideoRendererGui.create(25, 0, 25, 25);
+        remoteRenders[1] = VideoRendererGui.create(50, 0, 25, 25);
+        remoteRenders[2] = VideoRendererGui.create(75, 0, 25, 25);
+
+        remoteRenders[3] = VideoRendererGui.create(0, 25, 25, 25);
+        remoteRenders[4] = VideoRendererGui.create(25, 25, 25, 25);
+        remoteRenders[5] = VideoRendererGui.create(50, 25, 25, 25);
+        remoteRenders[6] = VideoRendererGui.create(75, 25, 25, 25);
+
+        remoteRenders[7] = VideoRendererGui.create(0, 50, 25, 25);
+        remoteRenders[8] = VideoRendererGui.create(25, 50, 25, 25);
+        remoteRenders[9] = VideoRendererGui.create(50, 50, 25, 25);
+        remoteRenders[10] = VideoRendererGui.create(75, 50, 25, 25);
+
+        remoteRenders[11] = VideoRendererGui.create(0, 75, 25, 25);
+        remoteRenders[12] = VideoRendererGui.create(25, 75, 25, 25);
+        remoteRenders[13] = VideoRendererGui.create(50, 75, 25, 25);
+        remoteRenders[14] = VideoRendererGui.create(75, 75, 25, 25);
 
         vsv.setOnClickListener(new View.OnClickListener()
         {
@@ -590,17 +616,31 @@ public class AppRTCDemoActivity
         @Override
         public void onAddStream(final MediaStream stream)
         {
+            Log.d(TAG, "ADD STREAM: " + stream);
+
             runOnUiThread(new Runnable()
             {
                 public void run()
                 {
+                    if ("mixedmslabel".equals(stream.label())) {
+                        Log.d(TAG, "Ignoring mixed stream");
+                        return;
+                    }
                     abortUnless(stream.audioTracks.size() <= 1 &&
                                     stream.videoTracks.size() <= 1,
                             "Weird-looking stream: " + stream);
                     if (stream.videoTracks.size() == 1)
                     {
-                        stream.videoTracks.get(0).addRenderer(
-                                new VideoRenderer(remoteRender));
+                        for (int i=0;i<renderedOccupied.length; i++)
+                        {
+                            if (!renderedOccupied[i])
+                            {
+                                stream.videoTracks.get(0).addRenderer(
+                                        new VideoRenderer(remoteRenders[i]));
+                                renderedOccupied[i] = true;
+                                break;
+                            }
+                        }
                     }
                 }
             });
@@ -609,6 +649,8 @@ public class AppRTCDemoActivity
         @Override
         public void onRemoveStream(final MediaStream stream)
         {
+            Log.d(TAG, "REMOVE STREAM: " + stream);
+
             runOnUiThread(new Runnable()
             {
                 public void run()

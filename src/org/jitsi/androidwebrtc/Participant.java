@@ -190,8 +190,8 @@ public class Participant
     @Override
     public void processPacket(Packet packet)
     {
-        try
-        {
+        //try
+        //{
             JingleIQ jiq = (JingleIQ) packet;
             ackJingleIQ(jiq);
             switch (jiq.getAction())
@@ -205,7 +205,6 @@ public class Participant
                     Log.d(TAG, bridgeOfferSdp.description);
 
                     rtcClient.acceptSessionInit(bridgeOfferSdp);
-
                     break;
                 case SOURCEADD:
                 case ADDSOURCE:
@@ -220,12 +219,12 @@ public class Participant
                             + jiq.toString());
                     break;
             }
-        }
+        /*}
         catch (Exception e)
         {
 
             Log.e(TAG, "Error", e);
-        }
+        }*/
     }
 
     /**

@@ -1,9 +1,9 @@
 package org.jitsi.androidwebrtc;
 
-import android.hardware.*;
 import android.util.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
+import org.jitsi.androidwebrtc.util.*;
 import org.jivesoftware.smack.packet.*;
 import org.webrtc.*;
 
@@ -106,6 +106,44 @@ public class JingleUtils
             sb.append(NL);
         }
 
+    }
+
+    public static SessionDescription addSSRCs(SessionDescription sdp,
+                                              MediaSSRCMap ssrcToAdd)
+    {
+        String[] parts = sdp.description.split("m=");
+
+        StringBuilder outputSdp = new StringBuilder(parts[0]);
+
+        for (int i=1; i < parts.length; i++)
+        {
+            String mediaPart = parts[i];
+            String media = mediaPart.substring(0, mediaPart.indexOf(" "));
+
+            // Process only audio and video media types
+            if (!"audio".equals(media) && !"video".equals(media))
+            {
+                outputSdp.append("m=").append(mediaPart);
+                continue;
+            }
+
+            StringBuilder builder = new StringBuilder("m=").append(mediaPart);
+
+            for (SourcePacketExtension ssrcPe
+                    : ssrcToAdd.getSSRCsForMedia(media))
+            {
+                for (ParameterPacketExtension ppe : ssrcPe.getParameters())
+                {
+                    builder.append("a=ssrc:").append(ssrcPe.getSSRC())
+                            .append(" ").append(ppe.getName())
+                            .append(":").append(ppe.getValue()).append("\n");
+                }
+            }
+
+            outputSdp.append(builder.toString());
+        }
+
+        return new SessionDescription(sdp.type, outputSdp.toString());
     }
 
     public static JingleIQ toJingle(SessionDescription sdp)

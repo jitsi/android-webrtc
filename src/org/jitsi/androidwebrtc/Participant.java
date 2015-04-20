@@ -8,11 +8,17 @@ import org.jitsi.androidwebrtc.util.*;
 import org.jivesoftware.smack.*;
 import org.jivesoftware.smack.filter.*;
 import org.jivesoftware.smack.packet.*;
+import org.jivesoftware.smack.provider.*;
+import org.jivesoftware.smackx.*;
+import org.jivesoftware.smackx.bytestreams.socks5.provider.*;
 import org.jivesoftware.smackx.muc.*;
 import org.jivesoftware.smackx.packet.*;
+import org.jivesoftware.smackx.provider.*;
+import org.jivesoftware.smackx.search.*;
 import org.webrtc.*;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * Created by boris on 27/01/15.
@@ -20,7 +26,7 @@ import java.util.*;
 public class Participant
         implements PacketListener
 {
-    private final String TAG = "Participant";
+    private static final String TAG = "Participant";
 
     private String xmppHostname;
     private String xmppDomain;
@@ -43,6 +49,8 @@ public class Participant
 
     private void connect()
     {
+        SmackInit.init();
+
         System.err.println("connect");
         ConnectionConfiguration config = new ConnectionConfiguration(
                 xmppHostname,
@@ -99,14 +107,16 @@ public class Participant
             connection.loginAnonymously();
             System.err.println("logged in");
 
-            /*ServiceDiscoveryManager discoManager
+            ServiceDiscoveryManager discoManager
                 = ServiceDiscoveryManager.getInstanceFor(connection);
+            discoManager.addFeature("urn:xmpp:jingle:1");
+            discoManager.addFeature("urn:xmpp:jingle:apps:rtp:1");
             discoManager.addFeature("urn:xmpp:jingle:apps:rtp:audio");
             discoManager.addFeature("urn:xmpp:jingle:apps:rtp:video");
             discoManager.addFeature("urn:xmpp:jingle:transports:ice-udp:1");
             discoManager.addFeature("urn:xmpp:jingle:transports:dtls-sctp:1");
             discoManager.addFeature("urn:ietf:rfc:5761");
-            discoManager.addFeature("urn:ietf:rfc:5888");*/
+            discoManager.addFeature("urn:ietf:rfc:5888");
         }
         catch (Exception e)
         {
@@ -209,6 +219,9 @@ public class Participant
                 case SOURCEADD:
                 case ADDSOURCE:
                     Log.i(TAG, "SOURCE ADD: " + jiq.toXML());
+                    MediaSSRCMap addedSSRCs
+                        = MediaSSRCMap.getSSRCsFromContent(jiq.getContentList());
+                    rtcClient.onSourceAdd(addedSSRCs);
                     break;
                 case REMOVESOURCE:
                 case SOURCEREMOVE:
@@ -248,8 +261,16 @@ public class Participant
         }
         if (connection != null)
         {
-            connection.disconnect();
-            connection = null;
+            // FIXME: separate thread!!
+            new Thread(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    connection.disconnect();
+                    connection = null;
+                }
+            }).start();
         }
     }
 

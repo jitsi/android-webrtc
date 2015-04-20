@@ -53,6 +53,7 @@ import org.json.JSONObject;
 import org.webrtc.*;
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -73,8 +74,7 @@ public class AppRTCDemoActivity
     private PeerConnection pc;
     private final PCObserver pcObserver = new PCObserver();
     private final SDPObserver sdpObserver = new SDPObserver();
-    private final GAEChannelClient.MessageHandler gaeHandler = new GAEHandler();
-    private AppRTCClient appRtcClient = new AppRTCClient(this, gaeHandler, this);
+    private AppRTCClient appRtcClient = new AppRTCClient(this, this);
     private AppRTCGLView vsv;
     private VideoRenderer.Callbacks localRender;
 
@@ -484,12 +484,6 @@ public class AppRTCDemoActivity
         logToast.show();
     }
 
-    // Send |json| to the underlying AppEngine Channel.
-    private void sendMessage(JSONObject json)
-    {
-        appRtcClient.sendMessage(json.toString());
-    }
-
     // Put a |key|->|value| mapping in |json|.
     private static void jsonPut(JSONObject json, String key, Object value)
     {
@@ -567,6 +561,11 @@ public class AppRTCDemoActivity
         pc.setRemoteDescription(sdpObserver, remoteDescription);
     }
 
+    public SessionDescription getRemoteDescription()
+    {
+        return pc.getRemoteDescription();
+    }
+
     // Implementation detail: observe ICE & stream changes and react accordingly.
     private class PCObserver
             implements PeerConnection.Observer
@@ -595,7 +594,6 @@ public class AppRTCDemoActivity
         public void onSignalingChange(
                 PeerConnection.SignalingState newState)
         {
-
             Log.i(TAG, "SIGNALING STATE: " + newState);
         }
 
@@ -663,15 +661,7 @@ public class AppRTCDemoActivity
         @Override
         public void onDataChannel(final DataChannel dc)
         {
-            runOnUiThread(new Runnable()
-            {
-                public void run()
-                {
-                    throw new RuntimeException(
-                            "AppRTC doesn't use data channels, but got: " + dc.label() +
-                                    " anyway!");
-                }
-            });
+            Log.i(TAG, "Data channel opened: " + dc);
         }
 
         @Override
@@ -697,80 +687,40 @@ public class AppRTCDemoActivity
                     "SDP create success type: " + origSdp.type.canonicalForm()
                             + ", desc:" + origSdp.description);
 
-            abortUnless(localSdp == null, "multiple SDP create?!?");
             final SessionDescription sdp = new SessionDescription(
                     origSdp.type, preferISAC(origSdp.description));
+
+            final boolean sendAccept = localSdp == null;
+
             localSdp = sdp;
+
             runOnUiThread(new Runnable()
             {
                 public void run()
                 {
                     pc.setLocalDescription(sdpObserver, sdp);
 
-                    appRtcClient.sendSessionAccept(sdp);
-
+                    if (sendAccept)
+                        appRtcClient.sendSessionAccept(sdp);
                 }
-            });//FIXME here we create answer and send it back as session-accept
-
-        }
-
-        // Helper for sending local SDP (offer or answer, depending on role) to the
-        // other participant.  Note that it is important to send the output of
-        // create{Offer,Answer} and not merely the current value of
-        // getLocalDescription() because the latter may include ICE candidates that
-        // we might want to filter elsewhere.
-        private void sendLocalDescription()
-        {
-            logAndToast("Sending " + localSdp.type);
-            JSONObject json = new JSONObject();
-            jsonPut(json, "type", localSdp.type.canonicalForm());
-            jsonPut(json, "sdp", localSdp.description);
-            sendMessage(json);
+            });
         }
 
         @Override
         public void onSetSuccess()
         {
-
             Log.i(TAG, "On SDP SET SUCCESS");
 
             runOnUiThread(new Runnable()
             {
                 public void run()
                 {
-                    if (appRtcClient.isInitiator())
+                    if (pc.getLocalDescription() == null)
                     {
-                        if (pc.getRemoteDescription() != null)
-                        {
-                            // We've set our local offer and received & set the remote
-                            // answer, so drain candidates.
-                            Log.i(TAG, "drainRemoteCandidates");
-                            drainRemoteCandidates();
-                        }
-                        else
-                        {
-                            // We've just set our local description so time to send it.
-                            Log.i(TAG, "sendLocalDescription");
-                            sendLocalDescription();
-                        }
-                    }
-                    else
-                    {
-                        if (pc.getLocalDescription() == null)
-                        {
-                            // We just set the remote offer, time to create our answer.
-                            logAndToast("Creating answer");
-                            Log.i(TAG, "createAnswer");
-                            pc.createAnswer(SDPObserver.this, sdpMediaConstraints);
-                        }
-                        else
-                        {
-                            // Answer now set as local description; send it and drain
-                            // candidates.
-                            Log.i(TAG, "sendAndDrain");
-                            sendLocalDescription();
-                            drainRemoteCandidates();
-                        }
+                        // We just set the remote offer, time to create our answer.
+                        logAndToast("Creating answer");
+                        Log.i(TAG, "createAnswer");
+                        pc.createAnswer(SDPObserver.this, sdpMediaConstraints);
                     }
                 }
             });
@@ -799,89 +749,6 @@ public class AppRTCDemoActivity
                 }
             });
         }
-
-        private void drainRemoteCandidates()
-        {
-            for (IceCandidate candidate : queuedRemoteCandidates)
-            {
-                pc.addIceCandidate(candidate);
-            }
-            queuedRemoteCandidates = null;
-        }
-    }
-
-    // Implementation detail: handler for receiving GAE messages and dispatching
-    // them appropriately.
-    private class GAEHandler
-            implements GAEChannelClient.MessageHandler
-    {
-        @JavascriptInterface
-        public void onOpen()
-        {
-            if (!appRtcClient.isInitiator())
-            {
-                return;
-            }
-            logAndToast("Creating offer...");
-            pc.createOffer(sdpObserver, sdpMediaConstraints);
-        }
-
-        @JavascriptInterface
-        public void onMessage(String data)
-        {
-            try
-            {
-                JSONObject json = new JSONObject(data);
-                String type = (String) json.get("type");
-                if (type.equals("candidate"))
-                {
-                    IceCandidate candidate = new IceCandidate(
-                            (String) json.get("id"),
-                            json.getInt("label"),
-                            (String) json.get("candidate"));
-                    if (queuedRemoteCandidates != null)
-                    {
-                        queuedRemoteCandidates.add(candidate);
-                    }
-                    else
-                    {
-                        pc.addIceCandidate(candidate);
-                    }
-                }
-                else if (type.equals("answer") || type.equals("offer"))
-                {
-                    SessionDescription sdp = new SessionDescription(
-                            SessionDescription.Type.fromCanonicalForm(type),
-                            preferISAC((String) json.get("sdp")));
-                    pc.setRemoteDescription(sdpObserver, sdp);
-                }
-                else if (type.equals("bye"))
-                {
-                    logAndToast("Remote end hung up; dropping PeerConnection");
-                    disconnectAndExit();
-                }
-                else
-                {
-                    throw new RuntimeException("Unexpected message: " + data);
-                }
-            }
-            catch (JSONException e)
-            {
-                throw new RuntimeException(e);
-            }
-        }
-
-        @JavascriptInterface
-        public void onClose()
-        {
-            disconnectAndExit();
-        }
-
-        @JavascriptInterface
-        public void onError(int code, String description)
-        {
-            disconnectAndExit();
-        }
     }
 
     // Disconnect from remote resources, dispose of local resources, and exit.
@@ -901,7 +768,6 @@ public class AppRTCDemoActivity
             }
             if (appRtcClient != null)
             {
-                appRtcClient.sendMessage("{\"type\": \"bye\"}");
                 appRtcClient.disconnect();
                 appRtcClient = null;
             }
@@ -918,5 +784,4 @@ public class AppRTCDemoActivity
             finish();
         }
     }
-
 }

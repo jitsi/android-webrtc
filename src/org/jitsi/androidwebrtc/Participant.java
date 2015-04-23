@@ -226,6 +226,9 @@ public class Participant
                 case REMOVESOURCE:
                 case SOURCEREMOVE:
                     Log.i(TAG, "REMOVE SOURCE: " + jiq.toXML());
+                    MediaSSRCMap removedSSRCs
+                            = MediaSSRCMap.getSSRCsFromContent(jiq.getContentList());
+                    rtcClient.onSourceRemove(removedSSRCs);
                     break;
                 default:
                     System.err.println(" : Unknown Jingle IQ received : "

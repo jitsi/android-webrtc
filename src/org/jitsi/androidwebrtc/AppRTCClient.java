@@ -27,24 +27,14 @@
 
 package org.jitsi.androidwebrtc;
 
-import android.app.Activity;
-import android.os.AsyncTask;
 import android.util.Log;
 
 import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
 import org.jitsi.androidwebrtc.util.*;
 import org.jivesoftware.smack.provider.*;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.webrtc.*;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.*;
 
 /**
@@ -83,6 +73,16 @@ public class AppRTCClient
 
         SessionDescription modifiedOffer
             = JingleUtils.addSSRCs(rsd, addedSSRCs);
+
+        activity.setRemoteDescription(modifiedOffer);
+    }
+
+    public void onSourceRemove(MediaSSRCMap removedSSRCs)
+    {
+        SessionDescription rsd = activity.getRemoteDescription();
+
+        SessionDescription modifiedOffer
+                = JingleUtils.removeSSRCs(rsd, removedSSRCs);
 
         activity.setRemoteDescription(modifiedOffer);
     }
@@ -233,41 +233,6 @@ public class AppRTCClient
             this.pcConstraints = pcConstraints;
             this.videoConstraints = videoConstraints;
             this.audioConstraints = audioConstraints;
-        }
-    }
-
-    // Load the given URL and return the value of the Location header of the
-    // resulting 302 response.  If the result is not a 302, throws.
-    private class RedirectResolver
-            extends AsyncTask<String, Void, String>
-    {
-        @Override
-        protected String doInBackground(String... urls)
-        {
-            if (urls.length != 1)
-            {
-                throw new RuntimeException("Must be called with a single URL");
-            }
-            try
-            {
-                return followRedirect(urls[0]);
-            }
-            catch (IOException e)
-            {
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Override
-        protected void onPostExecute(String url)
-        {
-            connectToRoom(url);
-        }
-
-        private String followRedirect(String url)
-                throws IOException
-        {
-            return url;
         }
     }
 }

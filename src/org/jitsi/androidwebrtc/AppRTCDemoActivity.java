@@ -80,17 +80,13 @@ public class AppRTCDemoActivity
 
     private final static int MAX_REMOTE_COUNT = 15;
 
-    private VideoRenderer.Callbacks[] remoteRenders
-            = new VideoRenderer.Callbacks[MAX_REMOTE_COUNT];
-
-    private boolean[] renderedOccupied = new boolean[MAX_REMOTE_COUNT];
+    private VideoStreamHandler[] remoteRenders
+            = new VideoStreamHandler[MAX_REMOTE_COUNT];
 
     private Toast logToast;
     private final LayoutParams hudLayout =
             new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
     private TextView hudView;
-    private LinkedList<IceCandidate> queuedRemoteCandidates =
-            new LinkedList<IceCandidate>();
     // Synchronize on quit[0] to avoid teardown-related crashes.
     private final Boolean[] quit = new Boolean[]{false};
     private MediaConstraints sdpMediaConstraints;
@@ -102,7 +98,7 @@ public class AppRTCDemoActivity
         super.onCreate(savedInstanceState);
 
         Thread.setDefaultUncaughtExceptionHandler(
-                new UnhandledExceptionHandler(this));
+            new UnhandledExceptionHandler(this));
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -115,24 +111,39 @@ public class AppRTCDemoActivity
 
         localRender = VideoRendererGui.create(0, 0, 25, 25);
 
-        remoteRenders[0] = VideoRendererGui.create(25, 0, 25, 25);
-        remoteRenders[1] = VideoRendererGui.create(50, 0, 25, 25);
-        remoteRenders[2] = VideoRendererGui.create(75, 0, 25, 25);
+        remoteRenders[0] = new VideoStreamHandler(
+                VideoRendererGui.create(25, 0, 25, 25));
+        remoteRenders[1] = new VideoStreamHandler(
+                VideoRendererGui.create(50, 0, 25, 25));
+        remoteRenders[2] = new VideoStreamHandler(
+                VideoRendererGui.create(75, 0, 25, 25));
 
-        remoteRenders[3] = VideoRendererGui.create(0, 25, 25, 25);
-        remoteRenders[4] = VideoRendererGui.create(25, 25, 25, 25);
-        remoteRenders[5] = VideoRendererGui.create(50, 25, 25, 25);
-        remoteRenders[6] = VideoRendererGui.create(75, 25, 25, 25);
+        remoteRenders[3] = new VideoStreamHandler(
+                VideoRendererGui.create(0, 25, 25, 25));
+        remoteRenders[4] = new VideoStreamHandler(
+                VideoRendererGui.create(25, 25, 25, 25));
+        remoteRenders[5] = new VideoStreamHandler(
+                VideoRendererGui.create(50, 25, 25, 25));
+        remoteRenders[6] = new VideoStreamHandler(
+                VideoRendererGui.create(75, 25, 25, 25));
 
-        remoteRenders[7] = VideoRendererGui.create(0, 50, 25, 25);
-        remoteRenders[8] = VideoRendererGui.create(25, 50, 25, 25);
-        remoteRenders[9] = VideoRendererGui.create(50, 50, 25, 25);
-        remoteRenders[10] = VideoRendererGui.create(75, 50, 25, 25);
+        remoteRenders[7] = new VideoStreamHandler(
+                VideoRendererGui.create(0, 50, 25, 25));
+        remoteRenders[8] = new VideoStreamHandler(
+                VideoRendererGui.create(25, 50, 25, 25));
+        remoteRenders[9] = new VideoStreamHandler(
+                VideoRendererGui.create(50, 50, 25, 25));
+        remoteRenders[10] = new VideoStreamHandler(
+                VideoRendererGui.create(75, 50, 25, 25));
 
-        remoteRenders[11] = VideoRendererGui.create(0, 75, 25, 25);
-        remoteRenders[12] = VideoRendererGui.create(25, 75, 25, 25);
-        remoteRenders[13] = VideoRendererGui.create(50, 75, 25, 25);
-        remoteRenders[14] = VideoRendererGui.create(75, 75, 25, 25);
+        remoteRenders[11] = new VideoStreamHandler(
+                VideoRendererGui.create(0, 75, 25, 25));
+        remoteRenders[12] = new VideoStreamHandler(
+                VideoRendererGui.create(25, 75, 25, 25));
+        remoteRenders[13] = new VideoStreamHandler(
+                VideoRendererGui.create(50, 75, 25, 25));
+        remoteRenders[14] = new VideoStreamHandler(
+                VideoRendererGui.create(75, 75, 25, 25));
 
         vsv.setOnClickListener(new View.OnClickListener()
         {
@@ -299,6 +310,15 @@ public class AppRTCDemoActivity
             videoSource.stop();
             videoSourceStopped = true;
         }
+    }
+
+    @Override
+    protected void onStop()
+    {
+        Log.d(TAG, "onStop");
+
+        super.onStop();
+
         appRtcClient.disconnect();
     }
 
@@ -317,6 +337,8 @@ public class AppRTCDemoActivity
     @Override
     public void onConfigurationChanged(Configuration newConfig)
     {
+        Log.d(TAG, "ON CONFIG CHANGED");
+
         Point displaySize = new Point();
         getWindowManager().getDefaultDisplay().getSize(displaySize);
         vsv.updateDisplaySize(displaySize);
@@ -616,32 +638,48 @@ public class AppRTCDemoActivity
         {
             Log.d(TAG, "ADD STREAM: " + stream);
 
+            if ("mixedmslabel".equals(stream.label()))
+            {
+                Log.d(TAG, "Ignoring mixed stream");
+                return;
+            }
+            if (stream.videoTracks.size() < 1)
+            {
+                return;
+            }
+
             runOnUiThread(new Runnable()
             {
                 public void run()
                 {
-                    if ("mixedmslabel".equals(stream.label())) {
-                        Log.d(TAG, "Ignoring mixed stream");
-                        return;
-                    }
-                    abortUnless(stream.audioTracks.size() <= 1 &&
-                                    stream.videoTracks.size() <= 1,
-                            "Weird-looking stream: " + stream);
-                    if (stream.videoTracks.size() == 1)
+                    boolean found = false;
+                    for (VideoStreamHandler handler : remoteRenders)
                     {
-                        for (int i=0;i<renderedOccupied.length; i++)
+                        if (!handler.isRunning())
                         {
-                            if (!renderedOccupied[i])
-                            {
-                                stream.videoTracks.get(0).addRenderer(
-                                        new VideoRenderer(remoteRenders[i]));
-                                renderedOccupied[i] = true;
-                                break;
-                            }
+                            handler.start(stream);
+                            found = true;
+                            break;
                         }
+                    }
+                    if (!found)
+                    {
+                        Log.d(TAG,
+                                "Unable to assign renderer for " + stream
+                                        + "all renders are busy.");
                     }
                 }
             });
+        }
+
+        private VideoStreamHandler findRendererForStream(MediaStream ms)
+        {
+            for (VideoStreamHandler handler : remoteRenders)
+            {
+                if (handler.isStreamRenderer(ms))
+                    return handler;
+            }
+            return null;
         }
 
         @Override
@@ -649,13 +687,32 @@ public class AppRTCDemoActivity
         {
             Log.d(TAG, "REMOVE STREAM: " + stream);
 
-            runOnUiThread(new Runnable()
+            if (stream.videoTracks.size() < 1)
+                return;
+
+            final VideoStreamHandler handler
+                    = findRendererForStream(stream);
+
+            if (handler == null)
+            {
+                Log.e(TAG, "No video handler found for " + stream);
+                return;
+            }
+
+            handler.stop();
+
+            /*runOnUiThread(new Runnable()
             {
                 public void run()
                 {
-                    stream.videoTracks.get(0).dispose();
+                    //stream.videoTracks.get(0).dispose();
+
+
+                    //stream.videoTracks.get(0).dispose();
+
+                    //vsv.requestRender();
                 }
-            });
+            });*/
         }
 
         @Override

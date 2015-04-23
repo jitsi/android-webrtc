@@ -132,6 +132,12 @@ public class JingleUtils
             for (SourcePacketExtension ssrcPe
                     : ssrcToAdd.getSSRCsForMedia(media))
             {
+                if (mediaPart.contains("a=ssrc:" + ssrcPe.getSSRC()))
+                {
+                    // SSRC is included already
+                    continue;
+                }
+
                 for (ParameterPacketExtension ppe : ssrcPe.getParameters())
                 {
                     builder.append("a=ssrc:").append(ssrcPe.getSSRC())
@@ -528,5 +534,57 @@ private static List<String> getMediaSsrcLines(String mediaType, SessionDescripti
 
         return ret;
 
+    }
+
+    public static SessionDescription removeSSRCs(SessionDescription sdp,
+                                                 MediaSSRCMap removedSSRCs)
+    {
+        String[] parts = sdp.description.split("m=");
+
+        StringBuilder outputSdp = new StringBuilder(parts[0]);
+
+        for (int i=1; i < parts.length; i++)
+        {
+            String mediaPart = parts[i];
+            String media = mediaPart.substring(0, mediaPart.indexOf(" "));
+
+            // Process only audio and video media types
+            if (!"audio".equals(media) && !"video".equals(media))
+            {
+                outputSdp.append("m=").append(mediaPart);
+                continue;
+            }
+
+            StringBuilder mediaPartOut = new StringBuilder();
+            String[] mediaLines = mediaPart.split("\n");
+
+            boolean first = true;
+            for (String line : mediaLines)
+            {
+                if (first)
+                {
+                    mediaPartOut.append("m=").append(line).append("\n");
+                    first = false;
+                    continue;
+                }
+                if (!line.startsWith("a=ssrc:"))
+                {
+                    mediaPartOut.append(line).append("\n");
+                    continue;
+                }
+                boolean skip = false;
+                for (SourcePacketExtension ssrcPe
+                    : removedSSRCs.getSSRCsForMedia(media))
+                {
+                    if (line.startsWith("a=ssrc:" + ssrcPe.getSSRC()))
+                       skip = true;
+                }
+                if (!skip)
+                    mediaPartOut.append(line).append("\n");
+            }
+            outputSdp.append(mediaPartOut.toString());
+        }
+
+        return new SessionDescription(sdp.type, outputSdp.toString());
     }
 }

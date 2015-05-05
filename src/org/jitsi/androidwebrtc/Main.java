@@ -1,6 +1,7 @@
 package org.jitsi.androidwebrtc;
 
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
+import org.jitsi.androidwebrtc.meet.*;
 import org.jivesoftware.smack.provider.*;
 
 /**

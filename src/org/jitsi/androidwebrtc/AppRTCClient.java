@@ -31,6 +31,7 @@ import android.util.Log;
 
 import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
+import org.jitsi.androidwebrtc.meet.*;
 import org.jitsi.androidwebrtc.util.*;
 import org.jivesoftware.smack.provider.*;
 import org.webrtc.*;

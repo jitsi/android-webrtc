@@ -1,4 +1,4 @@
-package org.jitsi.androidwebrtc.util;
+package org.jitsi.androidwebrtc.meet.util;
 
 import android.util.*;
 import org.jivesoftware.smack.*;

@@ -1,4 +1,4 @@
-package org.jitsi.androidwebrtc;
+package org.jitsi.androidwebrtc.util;
 
 import android.util.*;
 import org.jivesoftware.smack.*;

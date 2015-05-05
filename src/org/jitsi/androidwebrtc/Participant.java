@@ -8,17 +8,12 @@ import org.jitsi.androidwebrtc.util.*;
 import org.jivesoftware.smack.*;
 import org.jivesoftware.smack.filter.*;
 import org.jivesoftware.smack.packet.*;
-import org.jivesoftware.smack.provider.*;
 import org.jivesoftware.smackx.*;
-import org.jivesoftware.smackx.bytestreams.socks5.provider.*;
 import org.jivesoftware.smackx.muc.*;
 import org.jivesoftware.smackx.packet.*;
-import org.jivesoftware.smackx.provider.*;
-import org.jivesoftware.smackx.search.*;
 import org.webrtc.*;
 
 import java.util.*;
-import java.util.concurrent.*;
 
 /**
  * Created by boris on 27/01/15.
@@ -386,66 +381,6 @@ public class Participant
         if (extension != null)
         {
             packet.addExtension(extension);
-        }
-    }
-
-    private static class Observer
-            implements PeerConnection.Observer
-    {
-
-        @Override
-        public void onSignalingChange(PeerConnection.SignalingState newState)
-        {
-
-        }
-
-        @Override
-        public void onIceConnectionChange(PeerConnection.IceConnectionState newState)
-        {
-
-        }
-
-        @Override
-        public void onIceGatheringChange(PeerConnection.IceGatheringState
-                                                 newState)
-        {
-
-        }
-
-        @Override
-        public void onIceCandidate(IceCandidate candidate)
-        {
-
-        }
-
-        @Override
-        public void onError()
-        {
-
-        }
-
-        @Override
-        public void onAddStream(MediaStream stream)
-        {
-
-        }
-
-        @Override
-        public void onRemoveStream(MediaStream stream)
-        {
-
-        }
-
-        @Override
-        public void onDataChannel(DataChannel dataChannel)
-        {
-
-        }
-
-        @Override
-        public void onRenegotiationNeeded()
-        {
-
         }
     }
 

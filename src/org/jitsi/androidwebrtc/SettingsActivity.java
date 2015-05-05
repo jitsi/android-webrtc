@@ -32,7 +32,6 @@ import android.content.*;
 import android.content.SharedPreferences.*;
 import android.os.*;
 import android.preference.*;
-import org.appspot.apprtc.*;
 
 /**
  * Settings activity for AppRTC.

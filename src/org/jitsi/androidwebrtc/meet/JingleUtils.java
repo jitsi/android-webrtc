@@ -4,6 +4,7 @@ import android.util.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
 import org.jitsi.androidwebrtc.meet.util.*;
+import org.jitsi.util.*;
 import org.jivesoftware.smack.packet.*;
 import org.webrtc.*;
 
@@ -77,6 +78,18 @@ public class JingleUtils
 
             for (ParameterPacketExtension ppe : pt.getParameters())
                 sb.append("a=fmtp:").append(pt.getID()).append(' ').append(ppe.getName()).append('=').append(ppe.getValue()).append(NL);
+
+            for (RtcpFbPacketExtension rtcpFb
+                : pt.getRtcpFeedbackTypeList())
+            {
+                sb.append("a=rtcp-fb:").append(pt.getID())
+                    .append(" ").append(rtcpFb.getFeedbackType());
+                if (!StringUtils.isNullOrEmpty(rtcpFb.getFeedbackSubtype()))
+                {
+                    sb.append(" ").append(rtcpFb.getFeedbackSubtype());
+                }
+                sb.append(NL);
+            }
         }
 
         for (RTPHdrExtPacketExtension ext : description.getExtmapList())
@@ -86,7 +99,7 @@ public class JingleUtils
 
         for (SourcePacketExtension ssrc
                 : description.getChildExtensionsOfType(
-                SourcePacketExtension.class))
+                        SourcePacketExtension.class))
         {
             long ssrcL = ssrc.getSSRC();
             for (ParameterPacketExtension param : ssrc.getParameters())

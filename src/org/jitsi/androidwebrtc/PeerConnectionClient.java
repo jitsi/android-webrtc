@@ -30,8 +30,8 @@ package org.jitsi.androidwebrtc;
 import android.content.*;
 import android.opengl.*;
 import android.util.*;
-import org.appspot.apprtc.AppRTCClient.*;
-import org.appspot.apprtc.util.*;
+import org.jitsi.androidwebrtc.AppRTCClient.*;
+import org.jitsi.androidwebrtc.util.*;
 import org.webrtc.*;
 import org.webrtc.MediaConstraints.*;
 import org.webrtc.PeerConnection.*;
@@ -88,7 +88,7 @@ public class PeerConnectionClient {
   private boolean isError;
   private Timer statsTimer;
   private VideoRenderer.Callbacks localRender;
-  private VideoRenderer.Callbacks remoteRender;
+  private VideoStreamHandler[] remoteRenders;
   private SignalingParameters signalingParameters;
   private MediaConstraints pcConstraints;
   private MediaConstraints videoConstraints;
@@ -102,13 +102,18 @@ public class PeerConnectionClient {
   private PeerConnectionEvents events;
   private boolean isInitiator;
   private SessionDescription localSdp; // either offer or answer SDP
-  private MediaStream mediaStream;
+  private MediaStream audioMediaStream;
   private int numberOfCameras;
   private VideoCapturerAndroid videoCapturer;
   // enableVideo is set to true if video should be rendered and sent.
   private boolean renderVideo;
   private VideoTrack localVideoTrack;
-  private VideoTrack remoteVideoTrack;
+  private MediaStream videoMediaStream;
+
+  public SessionDescription getRemoteDescription()
+  {
+    return peerConnection.getRemoteDescription();
+  }
 
   /**
    * Peer connection parameters.
@@ -221,11 +226,10 @@ public class PeerConnectionClient {
     isError = false;
     queuedRemoteCandidates = null;
     localSdp = null; // either offer or answer SDP
-    mediaStream = null;
+    audioMediaStream = null;
     videoCapturer = null;
     renderVideo = true;
     localVideoTrack = null;
-    remoteVideoTrack = null;
     statsTimer = new Timer();
 
     executor.execute(new Runnable() {
@@ -238,14 +242,14 @@ public class PeerConnectionClient {
 
   public void createPeerConnection(
       final VideoRenderer.Callbacks localRender,
-      final VideoRenderer.Callbacks remoteRender,
+      final VideoStreamHandler[] remoteRenders,
       final SignalingParameters signalingParameters) {
     if (peerConnectionParameters == null) {
       Log.e(TAG, "Creating peer connection without initializing factory.");
       return;
     }
     this.localRender = localRender;
-    this.remoteRender = remoteRender;
+    this.remoteRenders = remoteRenders;
     this.signalingParameters = signalingParameters;
     executor.execute(new Runnable() {
       @Override
@@ -410,8 +414,14 @@ public class PeerConnectionClient {
         EnumSet.of(Logging.TraceLevel.TRACE_DEFAULT),
         Logging.Severity.LS_INFO);
 
-    mediaStream = factory.createLocalMediaStream("ARDAMS");
+    audioMediaStream = factory.createLocalMediaStream("ARDAMS");
+    audioMediaStream.addTrack(factory.createAudioTrack(
+        AUDIO_TRACK_ID,
+        factory.createAudioSource(audioConstraints)));
+    peerConnection.addStream(audioMediaStream);
+
     if (videoCallEnabled) {
+      videoMediaStream = factory.createLocalMediaStream("ARDVMS");
       String cameraDeviceName = VideoCapturerAndroid.getDeviceName(0);
       String frontCameraDeviceName =
           VideoCapturerAndroid.getNameOfFrontFacingDevice();
@@ -424,13 +434,9 @@ public class PeerConnectionClient {
         reportError("Failed to open camera");
         return;
       }
-      mediaStream.addTrack(createVideoTrack(videoCapturer));
+      videoMediaStream.addTrack(createVideoTrack(videoCapturer));
+      peerConnection.addStream(videoMediaStream);
     }
-
-    mediaStream.addTrack(factory.createAudioTrack(
-        AUDIO_TRACK_ID,
-        factory.createAudioSource(audioConstraints)));
-    peerConnection.addStream(mediaStream);
 
     Log.d(TAG, "Peer connection created.");
   }
@@ -530,8 +536,9 @@ public class PeerConnectionClient {
         if (localVideoTrack != null) {
           localVideoTrack.setEnabled(renderVideo);
         }
-        if (remoteVideoTrack != null) {
-          remoteVideoTrack.setEnabled(renderVideo);
+        for (VideoStreamHandler streamHandler : remoteRenders)
+        {
+          streamHandler.setEnabled(renderVideo);
         }
       }
     });
@@ -858,6 +865,18 @@ public class PeerConnectionClient {
       Log.d(TAG, "IceGatheringState: " + newState);
     }
 
+
+
+  private VideoStreamHandler findRendererForStream(MediaStream ms)
+  {
+    for (VideoStreamHandler handler : remoteRenders)
+    {
+      if (handler.isStreamRenderer(ms))
+        return handler;
+    }
+    return null;
+  }
+
     @Override
     public void onAddStream(final MediaStream stream){
       executor.execute(new Runnable() {
@@ -870,10 +889,32 @@ public class PeerConnectionClient {
             reportError("Weird-looking stream: " + stream);
             return;
           }
-          if (stream.videoTracks.size() == 1) {
-            remoteVideoTrack = stream.videoTracks.get(0);
-            remoteVideoTrack.setEnabled(renderVideo);
-            remoteVideoTrack.addRenderer(new VideoRenderer(remoteRender));
+
+          if ("mixedmslabel".equals(stream.label()))
+          {
+            Log.d(TAG, "Ignoring mixed stream");
+            return;
+          }
+          if (stream.videoTracks.size() < 1)
+          {
+            return;
+          }
+
+          boolean found = false;
+          for (VideoStreamHandler handler : remoteRenders)
+          {
+            if (!handler.isRunning())
+            {
+              handler.start(stream, renderVideo);
+              found = true;
+              break;
+            }
+          }
+          if (!found)
+          {
+            Log.d(TAG,
+                "Unable to assign renderer for " + stream
+                    + "all renders are busy.");
           }
         }
       });
@@ -887,8 +928,17 @@ public class PeerConnectionClient {
           if (peerConnection == null || isError) {
             return;
           }
-          remoteVideoTrack = null;
-          stream.videoTracks.get(0).dispose();
+          final VideoStreamHandler handler
+              = findRendererForStream(stream);
+
+          if (handler == null)
+          {
+            Log.e(TAG, "No video handler found for " + stream);
+            return;
+          }
+
+          handler.stop();
+
         }
       });
     }

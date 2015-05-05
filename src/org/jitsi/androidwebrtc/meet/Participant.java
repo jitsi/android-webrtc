@@ -30,11 +30,11 @@ public class Participant
     private XMPPConnection connection;
     MultiUserChat muc;
     private SessionDescription bridgeOfferSdp;
-    private MeetClient rtcClient;
+    private MeetRTCClient rtcClient;
     private String offererJid = null;
     private String sid;
 
-    public void join(MeetClient rtcClient, String xmppHostname, String xmppDomain, String mucJid, String nickname)
+    public void join(MeetRTCClient rtcClient, String xmppHostname, String xmppDomain, String mucJid, String nickname)
     {
         this.rtcClient = rtcClient;
         this.xmppHostname = xmppHostname;

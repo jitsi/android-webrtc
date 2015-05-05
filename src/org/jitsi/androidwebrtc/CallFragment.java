@@ -31,7 +31,6 @@ import android.app.*;
 import android.os.*;
 import android.view.*;
 import android.widget.*;
-import org.appspot.apprtc.*;
 import org.webrtc.VideoRendererGui.*;
 
 /**

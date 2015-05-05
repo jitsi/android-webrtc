@@ -32,7 +32,6 @@ import android.os.*;
 import android.util.*;
 import android.view.*;
 import android.widget.*;
-import org.appspot.apprtc.*;
 import org.webrtc.*;
 
 import java.util.*;

@@ -38,7 +38,6 @@ import android.view.View.*;
 import android.view.inputmethod.*;
 import android.webkit.*;
 import android.widget.*;
-import org.appspot.apprtc.*;
 import org.json.*;
 
 import java.util.*;

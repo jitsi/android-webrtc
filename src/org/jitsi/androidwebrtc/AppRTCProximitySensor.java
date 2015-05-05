@@ -31,8 +31,8 @@ import android.content.*;
 import android.hardware.*;
 import android.os.*;
 import android.util.*;
-import org.appspot.apprtc.util.*;
-import org.appspot.apprtc.util.AppRTCUtils.*;
+import org.jitsi.androidwebrtc.util.*;
+import org.jitsi.androidwebrtc.util.AppRTCUtils.*;
 
 /**
  * AppRTCProximitySensor manages functions related to the proximity sensor in

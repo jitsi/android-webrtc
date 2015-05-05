@@ -36,10 +36,10 @@ import android.util.*;
 import android.view.*;
 import android.view.WindowManager.*;
 import android.widget.*;
-import org.appspot.apprtc.AppRTCClient.*;
-import org.appspot.apprtc.PeerConnectionClient.*;
-import org.appspot.apprtc.*;
-import org.appspot.apprtc.util.*;
+import org.jitsi.androidwebrtc.AppRTCClient.*;
+import org.jitsi.androidwebrtc.PeerConnectionClient.*;
+import org.jitsi.androidwebrtc.meet.*;
+import org.jitsi.androidwebrtc.util.*;
 import org.webrtc.*;
 import org.webrtc.VideoRendererGui.*;
 
@@ -53,35 +53,35 @@ public class CallActivity extends Activity
       CallFragment.OnCallEvents {
 
   public static final String EXTRA_ROOMID =
-      "org.appspot.apprtc.ROOMID";
+      "org.jitsi.androidwebrtc.ROOMID";
   public static final String EXTRA_LOOPBACK =
-      "org.appspot.apprtc.LOOPBACK";
+      "org.jitsi.androidwebrtc.LOOPBACK";
   public static final String EXTRA_VIDEO_CALL =
-      "org.appspot.apprtc.VIDEO_CALL";
+      "org.jitsi.androidwebrtc.VIDEO_CALL";
   public static final String EXTRA_VIDEO_WIDTH =
-      "org.appspot.apprtc.VIDEO_WIDTH";
+      "org.jitsi.androidwebrtc.VIDEO_WIDTH";
   public static final String EXTRA_VIDEO_HEIGHT =
-      "org.appspot.apprtc.VIDEO_HEIGHT";
+      "org.jitsi.androidwebrtc.VIDEO_HEIGHT";
   public static final String EXTRA_VIDEO_FPS =
-      "org.appspot.apprtc.VIDEO_FPS";
+      "org.jitsi.androidwebrtc.VIDEO_FPS";
   public static final String EXTRA_VIDEO_BITRATE =
-      "org.appspot.apprtc.VIDEO_BITRATE";
+      "org.jitsi.androidwebrtc.VIDEO_BITRATE";
   public static final String EXTRA_VIDEOCODEC =
-      "org.appspot.apprtc.VIDEOCODEC";
+      "org.jitsi.androidwebrtc.VIDEOCODEC";
   public static final String EXTRA_HWCODEC_ENABLED =
-      "org.appspot.apprtc.HWCODEC";
+      "org.jitsi.androidwebrtc.HWCODEC";
   public static final String EXTRA_AUDIO_BITRATE =
-      "org.appspot.apprtc.AUDIO_BITRATE";
+      "org.jitsi.androidwebrtc.AUDIO_BITRATE";
   public static final String EXTRA_AUDIOCODEC =
-      "org.appspot.apprtc.AUDIOCODEC";
+      "org.jitsi.androidwebrtc.AUDIOCODEC";
   public static final String EXTRA_CPUOVERUSE_DETECTION =
-      "org.appspot.apprtc.CPUOVERUSE_DETECTION";
+      "org.jitsi.androidwebrtc.CPUOVERUSE_DETECTION";
   public static final String EXTRA_DISPLAY_HUD =
-      "org.appspot.apprtc.DISPLAY_HUD";
+      "org.jitsi.androidwebrtc.DISPLAY_HUD";
   public static final String EXTRA_CMDLINE =
-      "org.appspot.apprtc.CMDLINE";
+      "org.jitsi.androidwebrtc.CMDLINE";
   public static final String EXTRA_RUNTIME =
-      "org.appspot.apprtc.RUNTIME";
+      "org.jitsi.androidwebrtc.RUNTIME";
   private static final String TAG = "CallRTCClient";
   // Peer connection statistics callback period in ms.
   private static final int STAT_CALLBACK_PERIOD = 1000;
@@ -91,29 +91,26 @@ public class CallActivity extends Activity
   private static final int LOCAL_WIDTH_CONNECTING = 100;
   private static final int LOCAL_HEIGHT_CONNECTING = 100;
   // Local preview screen position after call is connected.
-  private static final int LOCAL_X_CONNECTED = 72;
-  private static final int LOCAL_Y_CONNECTED = 72;
+  private static final int LOCAL_X_CONNECTED = 0;
+  private static final int LOCAL_Y_CONNECTED = 0;
   private static final int LOCAL_WIDTH_CONNECTED = 25;
   private static final int LOCAL_HEIGHT_CONNECTED = 25;
-  // Remote video screen position
-  private static final int REMOTE_X = 0;
-  private static final int REMOTE_Y = 0;
-  private static final int REMOTE_WIDTH = 100;
-  private static final int REMOTE_HEIGHT = 100;
 
   private PeerConnectionClient peerConnectionClient = null;
   private AppRTCClient appRtcClient;
-  private SignalingParameters signalingParameters;
+  private AppRTCClient.SignalingParameters signalingParameters;
   private AppRTCAudioManager audioManager = null;
   private VideoRenderer.Callbacks localRender;
-  private VideoRenderer.Callbacks remoteRender;
+  private final static int MAX_REMOTE_COUNT = 15;
+  private VideoStreamHandler[] remoteRenders
+      = new VideoStreamHandler[MAX_REMOTE_COUNT];
   private ScalingType scalingType;
   private Toast logToast;
   private boolean commandLineRun;
   private int runTimeMs;
   private boolean activityRunning;
-  private RoomConnectionParameters roomConnectionParameters;
-  private PeerConnectionParameters peerConnectionParameters;
+  private AppRTCClient.RoomConnectionParameters roomConnectionParameters;
+  private PeerConnectionClient.PeerConnectionParameters peerConnectionParameters;
   private boolean iceConnected;
   private boolean isError;
   private boolean callControlFragmentVisible = true;
@@ -135,14 +132,14 @@ public class CallActivity extends Activity
     requestWindowFeature(Window.FEATURE_NO_TITLE);
     getWindow().addFlags(
         LayoutParams.FLAG_FULLSCREEN
-        | LayoutParams.FLAG_KEEP_SCREEN_ON
-        | LayoutParams.FLAG_DISMISS_KEYGUARD
-        | LayoutParams.FLAG_SHOW_WHEN_LOCKED
-        | LayoutParams.FLAG_TURN_SCREEN_ON);
+            | LayoutParams.FLAG_KEEP_SCREEN_ON
+            | LayoutParams.FLAG_DISMISS_KEYGUARD
+            | LayoutParams.FLAG_SHOW_WHEN_LOCKED
+            | LayoutParams.FLAG_TURN_SCREEN_ON);
     getWindow().getDecorView().setSystemUiVisibility(
         View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-        | View.SYSTEM_UI_FLAG_FULLSCREEN
-        | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+            | View.SYSTEM_UI_FLAG_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
     setContentView(R.layout.activity_call);
 
     iceConnected = false;
@@ -163,9 +160,26 @@ public class CallActivity extends Activity
         createPeerConnectionFactory();
       }
     });
-    remoteRender = VideoRendererGui.create(
-        REMOTE_X, REMOTE_Y,
-        REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
+
+    remoteRenders[0] = new VideoStreamHandler(25, 0, 25, 25, scalingType, false);
+    remoteRenders[1] = new VideoStreamHandler(50, 0, 25, 25, scalingType, false);
+    remoteRenders[2] = new VideoStreamHandler(75, 0, 25, 25, scalingType, false);
+
+    remoteRenders[3] = new VideoStreamHandler(0, 25, 25, 25, scalingType, false);
+    remoteRenders[4] = new VideoStreamHandler(25, 25, 25, 25, scalingType, false);
+    remoteRenders[5] = new VideoStreamHandler(50, 25, 25, 25, scalingType, false);
+    remoteRenders[6] = new VideoStreamHandler(75, 25, 25, 25, scalingType, false);
+
+    remoteRenders[7] = new VideoStreamHandler(0, 50, 25, 25, scalingType, false);
+    remoteRenders[8] = new VideoStreamHandler(25, 50, 25, 25, scalingType, false);
+    remoteRenders[9] = new VideoStreamHandler(50, 50, 25, 25, scalingType, false);
+    remoteRenders[10] = new VideoStreamHandler(75, 50, 25, 25, scalingType, false);
+
+    remoteRenders[11] = new VideoStreamHandler(0, 75, 25, 25, scalingType, false);
+    remoteRenders[12] = new VideoStreamHandler(25, 75, 25, 25, scalingType, false);
+    remoteRenders[13] = new VideoStreamHandler(50, 75, 25, 25, scalingType, false);
+    remoteRenders[14] = new VideoStreamHandler(75, 75, 25, 25, scalingType, false);
+
     localRender = VideoRendererGui.create(
         LOCAL_X_CONNECTING, LOCAL_Y_CONNECTING,
         LOCAL_WIDTH_CONNECTING, LOCAL_HEIGHT_CONNECTING, scalingType, true);
@@ -197,7 +211,7 @@ public class CallActivity extends Activity
       return;
     }
     boolean loopback = intent.getBooleanExtra(EXTRA_LOOPBACK, false);
-    peerConnectionParameters = new PeerConnectionParameters(
+    peerConnectionParameters = new PeerConnectionClient.PeerConnectionParameters(
         intent.getBooleanExtra(EXTRA_VIDEO_CALL, true),
         loopback,
         intent.getIntExtra(EXTRA_VIDEO_WIDTH, 0),
@@ -213,8 +227,8 @@ public class CallActivity extends Activity
     runTimeMs = intent.getIntExtra(EXTRA_RUNTIME, 0);
 
     // Create connection client and connection parameters.
-    appRtcClient = new WebSocketRTCClient(this, new LooperExecutor());
-    roomConnectionParameters = new RoomConnectionParameters(
+    appRtcClient = new MeetRTCClient(this);
+    roomConnectionParameters = new AppRTCClient.RoomConnectionParameters(
         roomUri.toString(), roomId, loopback);
 
     // Send intent arguments to fragments.
@@ -307,9 +321,10 @@ public class CallActivity extends Activity
   }
 
   private void updateVideoView() {
-    VideoRendererGui.update(remoteRender,
-        REMOTE_X, REMOTE_Y,
-        REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
+    for (VideoStreamHandler handler : remoteRenders)
+    {
+      handler.update();
+    }
     if (iceConnected) {
       VideoRendererGui.update(localRender,
           LOCAL_X_CONNECTED, LOCAL_Y_CONNECTED,
@@ -441,10 +456,13 @@ public class CallActivity extends Activity
   }
 
   private void reportError(final String description) {
-    runOnUiThread(new Runnable() {
+    runOnUiThread(new Runnable()
+    {
       @Override
-      public void run() {
-        if (!isError) {
+      public void run()
+      {
+        if (!isError)
+        {
           isError = true;
           disconnectWithErrorMessage(description);
         }
@@ -465,7 +483,7 @@ public class CallActivity extends Activity
     }
     logAndToast("Creating peer connection, delay=" + delta + "ms");
     peerConnectionClient.createPeerConnection(
-        localRender, remoteRender, signalingParameters);
+        localRender, remoteRenders, signalingParameters);
 
     if (signalingParameters.initiator) {
       logAndToast("Creating OFFER...");
@@ -491,9 +509,11 @@ public class CallActivity extends Activity
 
   @Override
   public void onConnectedToRoom(final SignalingParameters params) {
-    runOnUiThread(new Runnable() {
+    runOnUiThread(new Runnable()
+    {
       @Override
-      public void run() {
+      public void run()
+      {
         onConnectedToRoomInternal(params);
       }
     });
@@ -559,14 +579,20 @@ public class CallActivity extends Activity
   @Override
   public void onLocalDescription(final SessionDescription sdp) {
     final long delta = System.currentTimeMillis() - callStartedTimeMs;
-    runOnUiThread(new Runnable() {
+    runOnUiThread(new Runnable()
+    {
       @Override
-      public void run() {
-        if (appRtcClient != null) {
+      public void run()
+      {
+        if (appRtcClient != null)
+        {
           logAndToast("Sending " + sdp.type + ", delay=" + delta + "ms");
-          if (signalingParameters.initiator) {
+          if (signalingParameters.initiator)
+          {
             appRtcClient.sendOfferSdp(sdp);
-          } else {
+          }
+          else
+          {
             appRtcClient.sendAnswerSdp(sdp);
           }
         }
@@ -630,5 +656,15 @@ public class CallActivity extends Activity
   @Override
   public void onPeerConnectionError(final String description) {
     reportError(description);
+  }
+
+  public SessionDescription getRemoteDescription()
+  {
+    return peerConnectionClient.getRemoteDescription();
+  }
+
+  public void setRemoteDescription(SessionDescription remoteDescription)
+  {
+    peerConnectionClient.setRemoteDescription(remoteDescription);
   }
 }

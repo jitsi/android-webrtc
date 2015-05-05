@@ -31,7 +31,7 @@ import android.content.*;
 import android.content.pm.*;
 import android.media.*;
 import android.util.*;
-import org.appspot.apprtc.util.*;
+import org.jitsi.androidwebrtc.util.*;
 
 import java.util.*;
 

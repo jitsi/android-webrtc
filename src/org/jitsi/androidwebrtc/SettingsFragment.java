@@ -29,7 +29,6 @@ package org.jitsi.androidwebrtc;
 
 import android.os.*;
 import android.preference.*;
-import org.appspot.apprtc.*;
 
 /**
  * Settings fragment for AppRTC.

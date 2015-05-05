@@ -19,7 +19,7 @@
                  android:icon="@drawable/ic_launcher"
                  android:debuggable="true"
                  android:allowBackup="false">
-    <activity android:name="org.jitsi.androidwebrtc.AppRTCDemoActivity"
+    <activity android:name="org.jitsi.androidwebrtc.MeetDemoActivity"
               android:label="@string/app_name"
               android:screenOrientation="fullUser"
               android:configChanges="orientation|screenSize"

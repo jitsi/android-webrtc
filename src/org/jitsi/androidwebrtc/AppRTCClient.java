@@ -1,6 +1,6 @@
 /*
  * libjingle
- * Copyright 2013, Google Inc.
+ * Copyright 2013 Google Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -27,213 +27,114 @@
 
 package org.jitsi.androidwebrtc;
 
-import android.util.Log;
-
-import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
-import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
-import org.jitsi.androidwebrtc.meet.*;
-import org.jitsi.androidwebrtc.meet.util.*;
-import org.jivesoftware.smack.provider.*;
 import org.webrtc.*;
 
 import java.util.*;
 
 /**
- * Negotiates signaling for chatting with apprtc.appspot.com "rooms".
- * Uses the client<->server specifics of the apprtc AppEngine webapp.
- * <p/>
- * To use: create an instance of this object (registering a message handler) and
- * call connectToRoom().  Once that's done call sendMessage() and wait for the
- * registered handler to be called with received messages.
+ * AppRTCClient is the interface representing an AppRTC client.
  */
-public class AppRTCClient
-{
-    private static final String TAG = "AppRTCClient";
+public interface AppRTCClient {
 
-    private final AppRTCDemoActivity activity;
-
-    private final IceServersObserver iceServersObserver;
-
-    private AppRTCSignalingParameters appRTCSignalingParameters;
-
-    Participant participant;
-
-    public void acceptSessionInit(SessionDescription bridgeOfferSdp)
-    {
-        activity.setRemoteDescription(bridgeOfferSdp);
+  /**
+   * Struct holding the connection parameters of an AppRTC room.
+   */
+  public static class RoomConnectionParameters {
+    public final String roomUrl;
+    public final String roomId;
+    public final boolean loopback;
+    public RoomConnectionParameters(
+        String roomUrl, String roomId, boolean loopback) {
+      this.roomUrl = roomUrl;
+      this.roomId = roomId;
+      this.loopback = loopback;
     }
+  }
 
-    public void sendSessionAccept(SessionDescription sdp)
-    {
-        participant.sendSessionAccept(sdp);
+  /**
+   * Asynchronously connect to an AppRTC room URL using supplied connection
+   * parameters. Once connection is established onConnectedToRoom()
+   * callback with room parameters is invoked.
+   */
+  public void connectToRoom(RoomConnectionParameters connectionParameters);
+
+  /**
+   * Send offer SDP to the other participant.
+   */
+  public void sendOfferSdp(final SessionDescription sdp);
+
+  /**
+   * Send answer SDP to the other participant.
+   */
+  public void sendAnswerSdp(final SessionDescription sdp);
+
+  /**
+   * Send Ice candidate to the other participant.
+   */
+  public void sendLocalIceCandidate(final IceCandidate candidate);
+
+  /**
+   * Disconnect from room.
+   */
+  public void disconnectFromRoom();
+
+  /**
+   * Struct holding the signaling parameters of an AppRTC room.
+   */
+  public static class SignalingParameters {
+    public final List<PeerConnection.IceServer> iceServers;
+    public final boolean initiator;
+    public final String clientId;
+    public final String wssUrl;
+    public final String wssPostUrl;
+    public final SessionDescription offerSdp;
+    public final List<IceCandidate> iceCandidates;
+
+    public SignalingParameters(
+        List<PeerConnection.IceServer> iceServers,
+        boolean initiator, String clientId,
+        String wssUrl, String wssPostUrl,
+        SessionDescription offerSdp, List<IceCandidate> iceCandidates) {
+      this.iceServers = iceServers;
+      this.initiator = initiator;
+      this.clientId = clientId;
+      this.wssUrl = wssUrl;
+      this.wssPostUrl = wssPostUrl;
+      this.offerSdp = offerSdp;
+      this.iceCandidates = iceCandidates;
     }
+  }
 
-    public void onSourceAdd(MediaSSRCMap addedSSRCs)
-    {
-        SessionDescription rsd = activity.getRemoteDescription();
-
-        SessionDescription modifiedOffer
-            = JingleUtils.addSSRCs(rsd, addedSSRCs);
-
-        activity.setRemoteDescription(modifiedOffer);
-    }
-
-    public void onSourceRemove(MediaSSRCMap removedSSRCs)
-    {
-        SessionDescription rsd = activity.getRemoteDescription();
-
-        SessionDescription modifiedOffer
-                = JingleUtils.removeSSRCs(rsd, removedSSRCs);
-
-        activity.setRemoteDescription(modifiedOffer);
-    }
+  /**
+   * Callback interface for messages delivered on signaling channel.
+   *
+   * <p>Methods are guaranteed to be invoked on the UI thread of |activity|.
+   */
+  public static interface SignalingEvents {
+    /**
+     * Callback fired once the room's signaling parameters
+     * SignalingParameters are extracted.
+     */
+    public void onConnectedToRoom(final SignalingParameters params);
 
     /**
-     * Callback fired once the room's signaling parameters specify the set of
-     * ICE servers to use.
+     * Callback fired once remote SDP is received.
      */
-    public static interface IceServersObserver
-    {
-        public void onIceServers(List<PeerConnection.IceServer> iceServers);
-    }
-
-    public AppRTCClient(
-            AppRTCDemoActivity activity, IceServersObserver iceServersObserver)
-    {
-        this.activity = activity;
-        this.iceServersObserver = iceServersObserver;
-    }
+    public void onRemoteDescription(final SessionDescription sdp);
 
     /**
-     * Asynchronously connect to an AppRTC room URL, e.g.
-     * https://apprtc.appspot.com/?r=NNN and register message-handling callbacks
-     * on its GAE Channel.
+     * Callback fired once remote Ice candidate is received.
      */
-    public void connectToRoom(String url)
-    {
-
-        final String domain = url.substring(url.indexOf("://") + 3, url.lastIndexOf("/"));
-        String room = url.substring(url.lastIndexOf("/") + 1);
-        final String fullMuc = room + "@conference." + domain;
-        Log.i(TAG, "Domain: '" + domain + "' room: '" + room + "' muc: '" + fullMuc + "'");
-
-        final List<PeerConnection.IceServer> iceServers
-                = new ArrayList<PeerConnection.IceServer>();
-
-        MediaConstraints pcConstraints = new MediaConstraints();
-        pcConstraints.optional.add(
-                new MediaConstraints.KeyValuePair("DtlsSrtpKeyAgreement", "true"));
-
-        MediaConstraints videoConstraints = new MediaConstraints();
-
-        MediaConstraints audioConstraints = new MediaConstraints();
-        audioConstraints.optional.add(
-                new MediaConstraints.KeyValuePair("googEchoCancellation", "true"));
-        audioConstraints.optional.add(
-                new MediaConstraints.KeyValuePair("googAutoGainControl", "true"));
-        audioConstraints.optional.add(
-                new MediaConstraints.KeyValuePair("googHighpassFilter", "true"));
-        audioConstraints.optional.add(
-                new MediaConstraints.KeyValuePair("googNoiseSupression", "true"));
-        audioConstraints.optional.add(
-                new MediaConstraints.KeyValuePair("googNoisesuppression2", "true"));
-        audioConstraints.optional.add(
-                new MediaConstraints.KeyValuePair("googEchoCancellation2", "true"));
-        audioConstraints.optional.add(
-                new MediaConstraints.KeyValuePair("googAutoGainControl2", "true"));
-
-        appRTCSignalingParameters = new AppRTCSignalingParameters(
-                iceServers,
-                "gaeBaseHref",
-                "channelToken",
-                "postMessageUrl",
-                false,
-                pcConstraints,
-                videoConstraints,
-                audioConstraints);
-
-        iceServersObserver.onIceServers(iceServers);
-
-        ProviderManager.getInstance().addIQProvider(
-                ColibriConferenceIQ.ELEMENT_NAME,
-                ColibriConferenceIQ.NAMESPACE,
-                new ColibriIQProvider());
-
-        ProviderManager.getInstance().addIQProvider(
-                JingleIQ.ELEMENT_NAME,
-                JingleIQ.NAMESPACE,
-                new JingleIQProvider());
-
-        this.participant = new Participant();
-        new Thread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                participant.join(
-                        AppRTCClient.this, domain, domain, fullMuc, "androidtester");
-            }
-        }).start();
-    }
+    public void onRemoteIceCandidate(final IceCandidate candidate);
 
     /**
-     * Disconnect.
+     * Callback fired once channel is closed.
      */
-    public void disconnect()
-    {
-        if (participant != null)
-        {
-            participant.disconnect();
-            participant = null;
-        }
-    }
+    public void onChannelClose();
 
-    public boolean isInitiator()
-    {
-        return appRTCSignalingParameters.initiator;
-    }
-
-    public MediaConstraints pcConstraints()
-    {
-        return appRTCSignalingParameters.pcConstraints;
-    }
-
-    public MediaConstraints videoConstraints()
-    {
-        return appRTCSignalingParameters.videoConstraints;
-    }
-
-    public MediaConstraints audioConstraints()
-    {
-        return appRTCSignalingParameters.audioConstraints;
-    }
-
-    // Struct holding the signaling parameters of an AppRTC room.
-    private class AppRTCSignalingParameters
-    {
-        public final List<PeerConnection.IceServer> iceServers;
-        public final String gaeBaseHref;
-        public final String channelToken;
-        public final String postMessageUrl;
-        public final boolean initiator;
-        public final MediaConstraints pcConstraints;
-        public final MediaConstraints videoConstraints;
-        public final MediaConstraints audioConstraints;
-
-        public AppRTCSignalingParameters(
-                List<PeerConnection.IceServer> iceServers,
-                String gaeBaseHref, String channelToken, String postMessageUrl,
-                boolean initiator, MediaConstraints pcConstraints,
-                MediaConstraints videoConstraints, MediaConstraints audioConstraints)
-        {
-            this.iceServers = iceServers;
-            this.gaeBaseHref = gaeBaseHref;
-            this.channelToken = channelToken;
-            this.postMessageUrl = postMessageUrl;
-            this.initiator = initiator;
-            this.pcConstraints = pcConstraints;
-            this.videoConstraints = videoConstraints;
-            this.audioConstraints = audioConstraints;
-        }
-    }
+    /**
+     * Callback fired once channel error happened.
+     */
+    public void onChannelError(final String description);
+  }
 }

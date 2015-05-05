@@ -2,8 +2,7 @@ package org.jitsi.some;
 
 import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
-import org.jitsi.androidwebrtc.*;
-import org.jitsi.androidwebrtc.util.*;
+import org.jitsi.androidwebrtc.meet.util.*;
 import org.junit.*;
 import org.junit.runner.*;
 import org.junit.runners.*;

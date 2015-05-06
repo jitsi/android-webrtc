@@ -17,6 +17,8 @@ import java.util.*;
 public class JingleUtils
 {
     private static final String NL = "\n";
+    private static final String TAG = "JingleUtils";
+
     public static SessionDescription toSdp(JingleIQ iq, String type)
     {
         StringBuilder sb = new StringBuilder();
@@ -25,19 +27,87 @@ public class JingleUtils
         sb.append("o=- 1923518516 2 IN IP4 0.0.0.0").append(NL);
         sb.append("s=-").append(NL);
         sb.append("t=0 0").append(NL);
-        sb.append("a=group:BUNDLE audio video").append(NL);
+        sb.append("a=group:BUNDLE audio video data").append(NL);
 
         for (ContentPacketExtension cpe : iq.getContentList())
         {
-            if(!"data".equals(cpe.getName())
-                    // FIXME: duplicate empty ContentPacketExtensions
-                    && cpe.getAttributeNames().size() != 1
-                    )
+            if (cpe.getAttributeNames().size() == 1)
+            {
+                // FIXME: duplicate empty ContentPacketExtensions
+                continue;
+            }
+
+            if(!"data".equals(cpe.getName()))
+            {
                 appendMLine(cpe, sb);
+            }
+            else
+            {
+                appendSCTPLines(cpe, sb);
+            }
         }
 
         return new SessionDescription(SessionDescription.Type.fromCanonicalForm(type),
                                       sb.toString());
+    }
+
+    private static void appendSCTPLines(ContentPacketExtension cpe, StringBuilder sb)
+    {
+        String contentName = cpe.getName();
+        RtpDescriptionPacketExtension rdpe
+            = cpe.getFirstChildOfType(RtpDescriptionPacketExtension.class);
+        if (rdpe == null)
+        {
+            Log.d(TAG, "No RtpDescPacketExtension");
+            return;
+        }
+
+        IceUdpTransportPacketExtension transport
+            = cpe.getFirstChildOfType(IceUdpTransportPacketExtension.class);
+        if (transport == null)
+        {
+            Log.d(TAG, "No ICE packet extension");
+            return;
+        }
+
+        SctpMapExtension sctpMapExtension
+            = transport.getFirstChildOfType(SctpMapExtension.class);
+        if (sctpMapExtension == null)
+        {
+            Log.d(TAG, "No SctpMap packet extension");
+            return;
+        }
+        int sctpPort = sctpMapExtension.getPort();
+        // m=application 1 DTLS/SCTP 5000
+        sb.append("m=").append(rdpe.getMedia()).append(" 1 DTLS/SCTP ")
+            .append(sctpPort).append(NL);
+        // a=sctpmap:5000 webrtc-datachannel 1024
+        sb.append("a=sctpmap:").append(sctpPort)
+            .append(" ").append(sctpMapExtension.getProtocol())
+            .append(" ").append(sctpMapExtension.getStreams()).append(NL);
+
+        // c=IN IP4 0.0.0.0 //FIXME: what is it for ?
+        //sb.append("c=IN IP4 0.0.0.0");
+
+        DtlsFingerprintPacketExtension dtls
+            = transport.getFirstChildOfType(DtlsFingerprintPacketExtension.class);
+
+        sb.append("a=ice-ufrag:").append(transport.getUfrag()).append(NL);
+        sb.append("a=ice-pwd:").append(transport.getPassword()).append(NL);
+
+        sb.append("a=fingerprint:").append(dtls.getHash()).append(' ').append(dtls.getFingerprint()).append(NL);
+        sb.append("a=sendrecv").append(NL);
+        sb.append("a=mid:").append(contentName).append(NL); // XXX cpe.getName or description.getMedia()?
+        sb.append("a=rtcp-mux").append(NL);
+
+        for (CandidatePacketExtension candidate : transport.getCandidateList())
+        {
+            sb.append("a=candidate:").append(candidate.getFoundation()).append(' ').append(candidate.getComponent());
+            sb.append(' ').append(candidate.getProtocol()).append(' ').append(candidate.getPriority());
+            sb.append(' ').append(candidate.getIP()).append(' ').append(candidate.getPort()).append(" typ ");
+            sb.append(candidate.getType().toString()).append(" generation ").append(candidate.getGeneration());
+            sb.append(NL);
+        }
     }
 
     private static void appendMLine(ContentPacketExtension cpe, StringBuilder sb)

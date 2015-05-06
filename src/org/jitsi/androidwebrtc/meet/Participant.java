@@ -203,8 +203,7 @@ public class Participant
             switch (jiq.getAction())
             {
                 case SESSION_INITIATE:
-                    System.err.println(" : Jingle session-initiate " +
-                            "received");
+                    Log.i(TAG, " : Jingle session-initiate received");
                     this.bridgeOfferSdp = JingleUtils.toSdp(jiq, "offer");
                     offererJid = jiq.getFrom();
                     sid = jiq.getSID();

@@ -27,8 +27,10 @@
 
 package org.jitsi.androidwebrtc;
 
+import android.annotation.*;
 import android.content.*;
 import android.opengl.*;
+import android.os.*;
 import android.util.*;
 import org.jitsi.androidwebrtc.AppRTCClient.*;
 import org.jitsi.androidwebrtc.util.*;
@@ -371,6 +373,20 @@ public class PeerConnectionClient {
 
     // Create audio constraints.
     audioConstraints = new MediaConstraints();
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googEchoCancellation", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googAutoGainControl", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googHighpassFilter", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googNoiseSupression", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googNoisesuppression2", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googEchoCancellation2", "true"));
+    audioConstraints.optional.add(
+        new MediaConstraints.KeyValuePair("googAutoGainControl2", "true"));
 
     // Create SDP constraints.
     sdpMediaConstraints = new MediaConstraints();
@@ -611,9 +627,11 @@ public class PeerConnectionClient {
           sdpDescription = setStartBitrate(AUDIO_CODEC_OPUS, false,
               sdpDescription, peerConnectionParameters.audioStartBitrate);
         }
-        Log.d(TAG, "Set remote SDP.");
         SessionDescription sdpRemote = new SessionDescription(
             sdp.type, sdpDescription);
+
+        Log.d(TAG, "Set remote SDP " + sdpRemote.description);
+
         peerConnection.setRemoteDescription(sdpObserver, sdpRemote);
       }
     });
@@ -900,6 +918,8 @@ public class PeerConnectionClient {
             return;
           }
 
+          Log.d(TAG, "on add stream " + stream);
+
           boolean found = false;
           for (VideoStreamHandler handler : remoteRenders)
           {
@@ -925,6 +945,9 @@ public class PeerConnectionClient {
       executor.execute(new Runnable() {
         @Override
         public void run() {
+
+          Log.d(TAG, "on remove stream " + stream);
+
           if (peerConnection == null || isError) {
             return;
           }
@@ -945,8 +968,32 @@ public class PeerConnectionClient {
 
     @Override
     public void onDataChannel(final DataChannel dc) {
-      reportError("AppRTC doesn't use data channels, but got: " + dc.label()
-          + " anyway!");
+      Log.d(TAG, "Got data channel: " + dc);
+      dc.registerObserver(new DataChannel.Observer()
+      {
+        @Override
+        public void onStateChange()
+        {
+          Log.d(TAG,
+              "Data channel state changed: " + dc.label() +": " + dc.state());
+        }
+
+        @TargetApi(Build.VERSION_CODES.KITKAT)
+        @Override
+        public void onMessage(DataChannel.Buffer buffer)
+        {
+          if (buffer.binary)
+          {
+            Log.d(TAG, "Received binary msg over " + dc);
+          }
+          else
+          {
+            byte[] tmp = new byte[buffer.data.remaining()];
+            buffer.data.get(tmp);
+            Log.d(TAG, "Got msg: " + new String(tmp) +" over " + dc);
+          }
+        }
+      });
     }
 
     @Override

@@ -67,10 +67,10 @@ public class VideoStreamHandler
             return;
         }
 
-        if (remoteVideoTrack != null)
+        /*if (remoteVideoTrack != null)
         {
             remoteVideoTrack.dispose();
-        }
+        }*/
 
         //Log.d(TAG, "Stopping renderer for " + mediaStream);
 
@@ -84,6 +84,9 @@ public class VideoStreamHandler
 
         mediaStream = null;
         videoRenderer = null;
+        remoteVideoTrack = null;
+
+        //update();
     }
 
     public synchronized boolean isRunning()
@@ -98,7 +101,15 @@ public class VideoStreamHandler
 
     public void update()
     {
-        VideoRendererGui.update(
-            rendererCallbacks, x, y, w, h, scalingType, false);
+        if (remoteVideoTrack != null)
+        {
+            VideoRendererGui.update(
+                rendererCallbacks, x, y, w, h, scalingType, false);
+        }
+        else
+        {
+            VideoRendererGui.update(
+                rendererCallbacks, x, y, 0, 0, scalingType, false);
+        }
     }
 }

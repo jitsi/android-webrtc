@@ -255,6 +255,9 @@ public class CallActivity extends Activity
   @Override
   public void onPause() {
     super.onPause();
+
+    Log.d(TAG, "ON PAUSE");
+
     videoView.onPause();
     activityRunning = false;
     if (peerConnectionClient != null) {
@@ -265,6 +268,9 @@ public class CallActivity extends Activity
   @Override
   public void onResume() {
     super.onResume();
+
+    Log.d(TAG, "ON RESUME");
+
     videoView.onResume();
     activityRunning = true;
     if (peerConnectionClient != null) {

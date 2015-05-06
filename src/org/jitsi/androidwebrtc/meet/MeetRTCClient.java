@@ -115,6 +115,8 @@ public class MeetRTCClient
         SessionDescription modifiedOffer
             = JingleUtils.addSSRCs(rsd, addedSSRCs);
 
+        Log.i(TAG, "SOURCE ADD OFFER: " + modifiedOffer.description);
+
         callActivity.setRemoteDescription(modifiedOffer);
     }
 
@@ -124,6 +126,8 @@ public class MeetRTCClient
 
         SessionDescription modifiedOffer
             = JingleUtils.removeSSRCs(rsd, removedSSRCs);
+
+        Log.i(TAG, "SOURCE REMOVE OFFER: " + modifiedOffer.description);
 
         callActivity.setRemoteDescription(modifiedOffer);
     }

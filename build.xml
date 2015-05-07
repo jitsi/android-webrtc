@@ -167,5 +167,22 @@
 		</copy>
 	</target>
 
+	<!-- Copies WebRTC libraries from "debug" build -->
+	<target name="switch-to-webrtc-debug">
+		<copy todir="libs" overwrite="true" verbose="true">
+			<fileset dir="lib/webrtc/debug">
+				<include name="**/*" />
+			</fileset>
+		</copy>
+	</target>
+
+	<!-- Copies WebRTC libraries from "release" build -->
+	<target name="switch-to-webrtc-release">
+		<copy todir="libs" overwrite="true" verbose="true">
+			<fileset dir="lib/webrtc/release">
+				<include name="**/*" />
+			</fileset>
+		</copy>
+	</target>
 
 </project>

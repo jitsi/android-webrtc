@@ -942,28 +942,22 @@ public class PeerConnectionClient {
 
     @Override
     public void onRemoveStream(final MediaStream stream){
-      executor.execute(new Runnable() {
-        @Override
-        public void run() {
 
-          Log.d(TAG, "on remove stream " + stream);
+        Log.d(TAG, "on remove stream " + stream);
 
-          if (peerConnection == null || isError) {
-            return;
-          }
-          final VideoStreamHandler handler
-              = findRendererForStream(stream);
-
-          if (handler == null)
-          {
-            Log.e(TAG, "No video handler found for " + stream);
-            return;
-          }
-
-          handler.stop();
-
+        if (peerConnection == null || isError) {
+          return;
         }
-      });
+        final VideoStreamHandler handler
+            = findRendererForStream(stream);
+
+        if (handler == null)
+        {
+          Log.e(TAG, "No video handler found for " + stream);
+          return;
+        }
+
+        handler.stop();
     }
 
     @Override

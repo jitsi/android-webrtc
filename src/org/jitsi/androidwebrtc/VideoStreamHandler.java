@@ -67,12 +67,12 @@ public class VideoStreamHandler
             return;
         }
 
-        /*if (remoteVideoTrack != null)
-        {
-            remoteVideoTrack.dispose();
-        }*/
+        //if (remoteVideoTrack != null)
+        //{
+        //    remoteVideoTrack.dispose();
+        //}
 
-        //Log.d(TAG, "Stopping renderer for " + mediaStream);
+        Log.d(TAG, "Stopping renderer for " + mediaStream);
 
         //videoRenderer.dispose();
 

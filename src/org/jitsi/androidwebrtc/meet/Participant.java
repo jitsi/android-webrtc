@@ -4,7 +4,6 @@ import android.util.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.colibri.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jingle.*;
 import net.java.sip.communicator.impl.protocol.jabber.extensions.jitsimeet.*;
-import org.jitsi.androidwebrtc.*;
 import org.jitsi.androidwebrtc.meet.util.*;
 import org.jivesoftware.smack.*;
 import org.jivesoftware.smack.filter.*;
@@ -17,7 +16,9 @@ import org.webrtc.*;
 import java.util.*;
 
 /**
- * Created by boris on 27/01/15.
+ *
+ * @author Boris Grozev
+ * @author Pawel Domas
  */
 public class Participant
         implements PacketListener
@@ -29,7 +30,6 @@ public class Participant
     private int port = 5222;
     private XMPPConnection connection;
     MultiUserChat muc;
-    private SessionDescription bridgeOfferSdp;
     private MeetRTCClient rtcClient;
     private String offererJid = null;
     private String sid;
@@ -159,7 +159,6 @@ public class Participant
                 muc.join(nickname);
 
                 muc.sendMessage("Hello World! " + nickname);
-                System.err.println("Hello World! " + nickname);
 
                 /*
                  * Send a Presence packet containing a Nick extension so that the
@@ -196,17 +195,21 @@ public class Participant
     @Override
     public void processPacket(Packet packet)
     {
-        //try
-        //{
+        try
+        {
             JingleIQ jiq = (JingleIQ) packet;
             ackJingleIQ(jiq);
             switch (jiq.getAction())
             {
                 case SESSION_INITIATE:
                     Log.i(TAG, " : Jingle session-initiate received");
-                    this.bridgeOfferSdp = JingleUtils.toSdp(jiq, "offer");
+
+                    SessionDescription bridgeOfferSdp
+                        = JingleToSdp.toSdp(jiq, SessionDescription.Type.OFFER);
+
                     offererJid = jiq.getFrom();
                     sid = jiq.getSID();
+
                     Log.d(TAG, bridgeOfferSdp.description);
 
                     rtcClient.acceptSessionInit(bridgeOfferSdp);
@@ -230,12 +233,11 @@ public class Participant
                             + jiq.toString());
                     break;
             }
-        /*}
+        }
         catch (Exception e)
         {
-
             Log.e(TAG, "Error", e);
-        }*/
+        }
     }
 
     /**
@@ -272,14 +274,9 @@ public class Participant
         }
     }
 
-    public SessionDescription getBridgeOfferSdp()
-    {
-        return bridgeOfferSdp;
-    }
-
     public void sendSessionAccept(SessionDescription sdp)
     {
-        JingleIQ sessionAccept = JingleUtils.toJingle(sdp);
+        JingleIQ sessionAccept = SdpToJingle.toJingle(sdp);
         sessionAccept.setTo(offererJid);
         sessionAccept.setSID(sid);
         sessionAccept.setType(IQ.Type.SET);
@@ -386,7 +383,7 @@ public class Participant
 
     public void sendTransportInfo(IceCandidate candidate)
     {
-        JingleIQ iq = JingleUtils.createTransportInfo(offererJid, candidate);
+        JingleIQ iq = SdpToJingle.createTransportInfo(offererJid, candidate);
         if (iq != null)
         {
             iq.setSID(sid);

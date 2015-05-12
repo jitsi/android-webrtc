@@ -69,6 +69,16 @@ public class SourcePacketExtension
         return getChildExtensionsOfType(ParameterPacketExtension.class);
     }
 
+    public String getParameter(String name)
+    {
+        for (ParameterPacketExtension param : getParameters())
+        {
+            if (name.equals(param.getName()))
+                return param.getValue();
+        }
+        return null;
+    }
+
     /**
      * Gets the synchronization source (SSRC) ID of this source.
      *

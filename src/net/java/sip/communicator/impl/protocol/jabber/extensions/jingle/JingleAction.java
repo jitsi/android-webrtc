@@ -219,13 +219,11 @@ public enum JingleAction
      * not a valid media direction.
      */
     public static JingleAction parseString(String jingleActionStr)
-        throws IllegalArgumentException
     {
         for (JingleAction value : values())
             if (value.toString().equals(jingleActionStr))
                 return value;
 
-        throw new IllegalArgumentException(
-            jingleActionStr + " is not a valid jingle action");
+        return null;
     }
 }

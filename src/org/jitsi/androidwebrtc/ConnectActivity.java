@@ -67,6 +67,7 @@ public class ConnectActivity extends Activity {
   private String keyprefAudioBitrateValue;
   private String keyprefAudioCodec;
   private String keyprefHwCodecAcceleration;
+  private String keyprefNoAudioProcessingPipeline;
   private String keyprefCpuUsageDetection;
   private String keyprefDisplayHud;
   private String keyprefRoomServerUrl;
@@ -92,6 +93,7 @@ public class ConnectActivity extends Activity {
     keyprefAudioBitrateType = getString(R.string.pref_startaudiobitrate_key);
     keyprefAudioBitrateValue = getString(R.string.pref_startaudiobitratevalue_key);
     keyprefAudioCodec = getString(R.string.pref_audiocodec_key);
+    keyprefNoAudioProcessingPipeline = getString(R.string.pref_noaudioprocessing_key);
     keyprefCpuUsageDetection = getString(R.string.pref_cpu_usage_detection_key);
     keyprefDisplayHud = getString(R.string.pref_displayhud_key);
     keyprefRoomServerUrl = getString(R.string.pref_room_server_url_key);
@@ -252,6 +254,11 @@ public class ConnectActivity extends Activity {
     boolean hwCodec = sharedPref.getBoolean(keyprefHwCodecAcceleration,
         Boolean.valueOf(getString(R.string.pref_hwcodec_default)));
 
+    // Check Disable Audio Processing flag.
+    boolean noAudioProcessing = sharedPref.getBoolean(
+        keyprefNoAudioProcessingPipeline,
+        Boolean.valueOf(getString(R.string.pref_noaudioprocessing_default)));
+
     // Get video resolution from settings.
     int videoWidth = 0;
     int videoHeight = 0;
@@ -330,6 +337,8 @@ public class ConnectActivity extends Activity {
       intent.putExtra(CallActivity.EXTRA_HWCODEC_ENABLED, hwCodec);
       intent.putExtra(CallActivity.EXTRA_AUDIO_BITRATE, audioStartBitrate);
       intent.putExtra(CallActivity.EXTRA_AUDIOCODEC, audioCodec);
+      intent.putExtra(CallActivity.EXTRA_NOAUDIOPROCESSING_ENABLED,
+          noAudioProcessing);
       intent.putExtra(CallActivity.EXTRA_CPUOVERUSE_DETECTION,
           cpuOveruseDetection);
       intent.putExtra(CallActivity.EXTRA_DISPLAY_HUD, displayHud);
